@@ -1,0 +1,18 @@
+{
+  "name": "mes-apps",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Tableau du matin + Repas & courses",
+  "main": "main.js",
+  "scripts": {
+    "matin": "electron . matin",
+    "repas": "electron . repas",
+    "test": "node test.js"
+  },
+  "devDependencies": {
+    "electron": "45.3.0"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "2.119.0"
+  }
+}

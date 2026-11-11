@@ -1,0 +1,58 @@
+// Recettes proposées par « Idées repas ». Format : [nom, portions, ingrédients (un par ligne, comme dans l'app)].
+(function (racine) {
+  const BIBLIOTHEQUE = [
+    ['Pâtes carbonara', 2, ['250 g spaghetti', '150 g lardons', '2 oeufs', '50 g parmesan', 'poivre']],
+    ['Poulet curry et riz', 4, ['600 g blanc de poulet', '1 oignon', '40 cl lait de coco', '2 cs curry', '300 g riz']],
+    ['Chili con carne', 4, ['500 g boeuf haché', '1 boîte haricots rouges', '1 boîte tomates concassées', '1 oignon', '300 g riz', '1 cc cumin']],
+    ['Salade niçoise', 2, ['1 boîte thon', '4 tomates', '2 oeufs', '1 poivron', '50 g olives noires', 'huile d’olive']],
+    ['Omelette pommes de terre', 2, ['5 oeufs', '400 g pommes de terre', '1 oignon', 'sel']],
+    ['Soupe de légumes', 4, ['3 carottes', '2 poireaux', '400 g pommes de terre', '1 oignon', '1 cube bouillon']],
+    ['Pâtes bolognaise', 4, ['400 g spaghetti', '400 g boeuf haché', '1 boîte tomates concassées', '1 oignon', '1 carotte', '2 gousses ail']],
+    ['Lasagnes', 4, ['12 feuilles lasagne', '500 g boeuf haché', '1 boîte tomates concassées', '50 cl lait', '40 g beurre', '40 g farine', '100 g gruyère râpé', '1 oignon']],
+    ['Gratin dauphinois', 4, ['1 kg pommes de terre', '50 cl crème', '25 cl lait', '2 gousses ail', 'muscade']],
+    ['Hachis parmentier', 4, ['1 kg pommes de terre', '500 g boeuf haché', '1 oignon', '20 cl lait', '30 g beurre', '80 g gruyère râpé']],
+    ['Quiche lorraine', 4, ['1 pâte brisée', '200 g lardons', '3 oeufs', '20 cl crème', '20 cl lait', '80 g gruyère râpé']],
+    ['Croque-monsieur', 2, ['8 tranches pain de mie', '4 tranches jambon', '4 tranches fromage', '20 g beurre']],
+    ['Tartiflette', 4, ['1 kg pommes de terre', '200 g lardons', '1 reblochon', '1 oignon', '20 cl crème']],
+    ['Riz cantonais', 2, ['250 g riz', '2 oeufs', '2 tranches jambon', '100 g petits pois', '1 oignon', '2 cs sauce soja']],
+    ['Poêlée poulet poivrons', 2, ['300 g blanc de poulet', '2 poivrons', '1 oignon', '1 courgette', '150 g riz']],
+    ['Wraps poulet', 2, ['4 tortillas', '250 g blanc de poulet', '1 salade', '2 tomates', '50 g fromage râpé', 'sauce blanche']],
+    ['Tacos boeuf', 2, ['4 tortillas', '300 g boeuf haché', '1 oignon', '2 tomates', '1 salade', '50 g cheddar']],
+    ['Burgers maison', 2, ['2 pains burger', '2 steaks hachés', '2 tranches cheddar', '1 tomate', '1 oignon', 'salade']],
+    ['Steak frites salade', 2, ['2 steaks', '600 g pommes de terre', '1 salade', 'huile']],
+    ['Saumon riz brocoli', 2, ['2 pavés saumon', '150 g riz', '1 brocoli', '1 citron']],
+    ['Papillote de cabillaud', 2, ['2 filets cabillaud', '2 courgettes', '1 citron', '2 tomates', '150 g riz']],
+    ['Pâtes au thon', 2, ['250 g pâtes', '1 boîte thon', '1 boîte tomates concassées', '1 oignon', '50 g olives noires']],
+    ['Pâtes au saumon', 2, ['250 g pâtes', '2 pavés saumon', '20 cl crème', '1 citron', 'aneth']],
+    ['Risotto champignons', 2, ['200 g riz arborio', '250 g champignons', '1 oignon', '1 cube bouillon', '40 g parmesan', '10 cl vin blanc']],
+    ['Curry de lentilles', 4, ['250 g lentilles corail', '40 cl lait de coco', '1 boîte tomates concassées', '1 oignon', '2 cs curry', '200 g riz']],
+    ['Chakchouka', 2, ['4 oeufs', '2 poivrons', '1 boîte tomates concassées', '1 oignon', '1 cc cumin', 'pain']],
+    ['Ratatouille', 4, ['2 courgettes', '1 aubergine', '2 poivrons', '4 tomates', '1 oignon', '2 gousses ail']],
+    ['Gratin de courgettes', 4, ['4 courgettes', '3 oeufs', '20 cl crème', '100 g gruyère râpé']],
+    ['Poulet rôti pommes de terre', 4, ['1 poulet', '1 kg pommes de terre', '4 gousses ail', 'thym']],
+    ['Cuisses de poulet au four', 4, ['4 cuisses poulet', '800 g pommes de terre', '2 oignons', 'paprika']],
+    ['Escalope milanaise pâtes', 2, ['2 escalopes poulet', '1 oeuf', '50 g chapelure', '200 g pâtes', '1 boîte tomates concassées']],
+    ['Saucisses lentilles', 4, ['6 saucisses', '300 g lentilles', '2 carottes', '1 oignon']],
+    ['Purée jambon', 2, ['600 g pommes de terre', '4 tranches jambon', '20 cl lait', '30 g beurre']],
+    ['Croquettes de poisson et riz', 2, ['10 poissons panés', '150 g riz', '200 g haricots verts']],
+    ['Pizza maison', 2, ['1 pâte à pizza', '1 boîte tomates concassées', '1 mozzarella', '4 tranches jambon', '100 g champignons']],
+    ['Salade César', 2, ['1 salade romaine', '250 g blanc de poulet', '50 g parmesan', '1 pain', 'sauce césar']],
+    ['Salade de pâtes', 2, ['200 g pâtes', '1 boîte thon', '2 tomates', '1 concombre', '100 g feta', '50 g olives noires']],
+    ['Taboulé poulet', 2, ['200 g semoule', '2 tomates', '1 concombre', '1 citron', '250 g blanc de poulet', 'menthe']],
+    ['Couscous poulet merguez', 4, ['4 cuisses poulet', '4 merguez', '300 g semoule', '3 carottes', '2 courgettes', '1 boîte pois chiches', '1 oignon']],
+    ['Boeuf bourguignon', 4, ['1 kg boeuf à braiser', '200 g lardons', '75 cl vin rouge', '3 carottes', '250 g champignons', '2 oignons']],
+    ['Blanquette de veau', 4, ['1 kg veau', '3 carottes', '250 g champignons', '20 cl crème', '1 oignon', '250 g riz']],
+    ['Porc au caramel et riz', 4, ['600 g échine de porc', '1 oignon', '3 cs sauce soja', '50 g sucre', '250 g riz']],
+    ['Nouilles sautées légumes', 2, ['250 g nouilles', '1 poivron', '2 carottes', '1 oignon', '2 oeufs', '3 cs sauce soja']],
+    ['Soupe à l’oignon', 4, ['6 oignons', '40 g beurre', '1 cube bouillon', '1 baguette', '100 g gruyère râpé']],
+    ['Velouté de potiron', 4, ['1 kg potiron', '2 pommes de terre', '1 oignon', '20 cl crème', '1 cube bouillon']],
+    ['Crêpes jambon fromage', 2, ['250 g farine', '3 oeufs', '50 cl lait', '4 tranches jambon', '100 g gruyère râpé']],
+    ['Oeufs cocotte épinards', 2, ['4 oeufs', '200 g épinards', '10 cl crème', 'pain']],
+    ['Moules frites', 2, ['1,5 kg moules', '600 g pommes de terre', '1 oignon', '10 cl vin blanc', 'persil']],
+  ];
+  // Ingrédients qu'on a presque toujours : ils ne comptent pas pour proposer ni pour juger ce qui manque.
+  const PLACARD = ['sel', 'poivre', 'huile', 'huile d’olive', 'eau', 'sucre', 'farine', 'muscade', 'thym', 'paprika', 'persil', 'menthe', 'aneth', 'cumin', 'curry', 'ail', 'gousse ail', 'cube bouillon', 'sauce soja'];
+  const lib = { BIBLIOTHEQUE, PLACARD };
+  if (typeof module !== 'undefined') module.exports = lib;
+  else Object.assign(racine, lib);
+})(typeof window !== 'undefined' ? window : globalThis);

@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src https://aodlmvxvyjnujrcxfbny.supabase.co wss://aodlmvxvyjnujrcxfbny.supabase.co; style-src 'self' 'unsafe-inline'; script-src 'self'">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Repas & courses</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  .app { display: grid; grid-template-rows: auto 1fr; height: 100%; }
+  nav { display: flex; align-items: center; gap: 6px; padding: 14px 24px; border-bottom: 1px solid var(--ligne); background: var(--carte); }
+  nav h1 { font-size: 18px; margin-right: 18px; }
+  nav h1 span { color: var(--accent); }
+  .onglet { background: transparent; color: var(--doux); font-weight: 500; }
+  .onglet[aria-selected="true"] { background: var(--accent-doux); color: var(--accent); font-weight: 600; }
+  main { overflow: auto; }
+  .vue { max-width: 1200px; margin: 0 auto; padding: 24px; }
+  .vue[hidden] { display: none; }
+  .entete { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; flex-wrap: wrap; }
+  .entete h2 { margin: 0; font-size: 20px; text-transform: none; letter-spacing: -.01em; color: var(--encre); }
+  .entete .espace { flex: 1; }
+  /* Semaine */
+  .semaine { display: grid; grid-template-columns: 130px 1fr 1fr; gap: 0; }
+  .semaine > div { padding: 10px 12px; border-bottom: 1px solid var(--ligne); display: flex; align-items: center; }
+  .semaine .tete { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--doux); font-weight: 600; }
+  .semaine .nomjour { font-weight: 600; flex-direction: column; align-items: flex-start; justify-content: center; }
+  .semaine .nomjour small { color: var(--doux); font-weight: 400; }
+  .semaine .auj { color: var(--accent); }
+  .semaine select { width: 100%; }
+  /* Recettes */
+  .recettes { display: grid; grid-template-columns: 300px 1fr; gap: 18px; align-items: start; }
+  @media (max-width: 860px) { .recettes { grid-template-columns: 1fr; } }
+  #liste-recettes li { cursor: pointer; padding: 10px 12px; border-radius: 10px; border: 0; }
+  #liste-recettes li:hover { background: var(--fond); }
+  #liste-recettes li[aria-current="true"] { background: var(--accent-doux); color: var(--accent); font-weight: 600; }
+  .editeur label { display: block; font-size: 13px; color: var(--doux); font-weight: 600; margin: 14px 0 6px; }
+  .editeur input, .editeur textarea { width: 100%; }
+  .editeur textarea { resize: vertical; min-height: 160px; line-height: 1.6; }
+  .deux { display: grid; grid-template-columns: 1fr 140px; gap: 12px; }
+  .actions { display: flex; gap: 8px; margin-top: 16px; align-items: center; }
+  .actions .espace { flex: 1; }
+  #sauve { color: var(--vert); font-size: 13px; }
+  /* Idées */
+  .idees { display: grid; grid-template-columns: 340px 1fr; gap: 18px; align-items: start; }
+  @media (max-width: 900px) { .idees { grid-template-columns: 1fr; } }
+  #form-stock textarea { width: 100%; resize: vertical; line-height: 1.6; margin-top: 8px; }
+  #form-stock .actions { flex-wrap: wrap; }
+  .cartes-idees { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
+  .idee { background: var(--carte); border: 1px solid var(--ligne); border-radius: 14px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; box-shadow: var(--ombre); }
+  .idee h3 { font-size: 16px; }
+  .idee .jauge { height: 6px; border-radius: 99px; background: var(--fond); overflow: hidden; }
+  .idee .jauge i { display: block; height: 100%; background: var(--vert); border-radius: 99px; }
+  .idee .ok { color: var(--vert); font-size: 13px; }
+  .idee .manque { color: var(--doux); font-size: 13px; }
+  .idee .bas { display: flex; align-items: center; gap: 8px; margin-top: auto; padding-top: 4px; }
+  .idee .bas .espace { flex: 1; }
+  .idee.ajoutee { border-color: var(--vert); }
+  /* Courses */
+  .courses { display: grid; grid-template-columns: 1fr 320px; gap: 18px; align-items: start; }
+  @media (max-width: 860px) { .courses { grid-template-columns: 1fr; } }
+  .article label { flex: 1; cursor: pointer; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+  .article .qte { font-weight: 600; font-variant-numeric: tabular-nums; min-width: 70px; }
+  .article.coche label { color: var(--doux); text-decoration: line-through; }
+  .article .source { font-size: 12px; color: var(--doux); }
+</style>
+</head>
+<body>
+<div class="app">
+  <nav role="tablist" aria-label="Sections">
+    <h1>Repas <span>&</span> courses</h1>
+    <button class="onglet" role="tab" data-vue="semaine" aria-selected="true">Semaine</button>
+    <button class="onglet" role="tab" data-vue="idees" aria-selected="false">Idées repas</button>
+    <button class="onglet" role="tab" data-vue="recettes" aria-selected="false">Recettes</button>
+    <button class="onglet" role="tab" data-vue="courses" aria-selected="false">Liste de courses</button>
+  </nav>
+  <main>
+    <section class="vue" id="vue-semaine" role="tabpanel">
+      <div class="entete">
+        <button class="contour" id="sem-prec" aria-label="Semaine précédente">←</button>
+        <h2 id="titre-semaine"></h2>
+        <button class="contour" id="sem-suiv" aria-label="Semaine suivante">→</button>
+        <button class="discret" id="sem-auj">Cette semaine</button>
+        <span class="espace"></span>
+        <label class="petit" for="personnes">Personnes</label>
+        <input type="number" id="personnes" min="1" max="20" style="width:70px">
+        <button class="contour" id="hasard" title="Remplit les repas vides au hasard">🎲 Compléter au hasard</button>
+      </div>
+      <div class="carte"><div class="semaine" id="grille-semaine"></div></div>
+    </section>
+
+    <section class="vue" id="vue-idees" role="tabpanel" hidden>
+      <div class="idees">
+        <form class="carte" id="form-stock">
+          <h2>Mes courses / mon frigo</h2>
+          <label class="petit" for="stock">Un produit par ligne (ou séparés par des virgules). Les quantités sont facultatives.</label>
+          <textarea id="stock" rows="12" placeholder="poulet&#10;riz&#10;tomates&#10;oeufs&#10;pâtes&#10;crème"></textarea>
+          <div class="actions">
+            <button>Proposer des repas</button>
+            <button type="button" class="contour" id="remplir">Remplir la semaine</button>
+          </div>
+          <p class="petit" id="info-idees" role="status"></p>
+          <p class="petit">Le sel, le poivre, l’huile, l’ail, les épices… sont supposés déjà au placard.</p>
+        </form>
+        <div>
+          <div class="entete" style="margin-bottom:12px"><h2 id="titre-idees">Idées</h2><span class="espace"></span>
+            <label class="petit"><input type="checkbox" id="seulement-complets"> Seulement ce que je peux faire sans rien racheter</label></div>
+          <div class="cartes-idees" id="liste-idees"><p class="vide">Tape tes courses à gauche puis clique sur « Proposer des repas ».</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="vue" id="vue-recettes" role="tabpanel" hidden>
+      <div class="recettes">
+        <div class="carte">
+          <div class="ligne-form" style="margin:0 0 12px">
+            <input id="cherche" placeholder="Chercher…" aria-label="Chercher une recette">
+            <button id="nouvelle">+ Nouvelle</button>
+          </div>
+          <ul class="liste" id="liste-recettes"></ul>
+        </div>
+        <form class="carte editeur" id="editeur">
+          <div class="deux">
+            <div><label for="r-nom">Nom</label><input id="r-nom" required maxlength="80"></div>
+            <div><label for="r-portions">Portions</label><input id="r-portions" type="number" min="1" max="20" required></div>
+          </div>
+          <label for="r-ingredients">Ingrédients <span style="font-weight:400">— un par ligne, ex. « 200 g pâtes », « 2 oeufs », « sel »</span></label>
+          <textarea id="r-ingredients"></textarea>
+          <label for="r-etapes">Préparation</label>
+          <textarea id="r-etapes" style="min-height:120px"></textarea>
+          <div class="actions">
+            <button>Enregistrer</button>
+            <span id="sauve" role="status"></span>
+            <span class="espace"></span>
+            <button type="button" class="discret" id="supprimer">Supprimer la recette</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <section class="vue" id="vue-courses" role="tabpanel" hidden>
+      <div class="entete">
+        <h2 id="titre-courses"></h2>
+        <span class="espace"></span>
+        <button class="contour" id="copier">Copier la liste</button>
+        <button class="discret" id="decocher">Tout décocher</button>
+      </div>
+      <div class="courses">
+        <div class="carte"><ul class="liste" id="liste-courses"></ul></div>
+        <div class="carte">
+          <h2>En plus</h2>
+          <ul class="liste" id="liste-extras"></ul>
+          <form class="ligne-form" id="form-extra">
+            <input id="extra" placeholder="Lessive, café…" aria-label="Article en plus" required maxlength="100">
+            <button>+</button>
+          </form>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+<script src="commun.js"></script>
+<script src="vendor/supabase.js"></script>
+<script src="sync.js"></script>
+<script src="bibliotheque.js"></script>
+<script src="repas.js"></script>
+</body>
+</html>
