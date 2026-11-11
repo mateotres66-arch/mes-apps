@@ -27,6 +27,15 @@ assert.strictEqual(c.formatQte(null, ''), '');
 assert.strictEqual(c.formatQte(6.5, ''), '7');
 assert.strictEqual(c.formatQte(1.5, 'boîte'), '2 boîte');
 assert.strictEqual(c.formatQte(1.5, 'c. à c.'), '1,5 c. à c.');
+// Tâches récurrentes
+assert.ok(c.recurrenteDue('jour', '2026-11-11'));
+assert.ok(c.recurrenteDue('sem:2', '2026-11-10')); // mardi
+assert.ok(!c.recurrenteDue('sem:2', '2026-11-11'));
+assert.ok(c.recurrenteDue('mois:1', '2026-12-01'));
+assert.ok(c.recurrenteDue('mois:31', '2026-11-30')); // dernier jour d'un mois de 30 jours
+assert.ok(!c.recurrenteDue('mois:31', '2026-11-29'));
+assert.ok(c.recurrenteDue('mois:31', '2027-02-28'));
+
 // Idées repas
 const { BIBLIOTHEQUE, PLACARD } = require('./src/bibliotheque.js');
 const lib = BIBLIOTHEQUE.map(([nom, portions, ingredients]) => ({ nom, portions, ingredients }));

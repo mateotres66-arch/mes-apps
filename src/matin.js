@@ -11,7 +11,7 @@ const LIENS_DEFAUT = [
   { nom: 'Claude', cible: 'https://claude.ai' },
 ];
 
-let etat = { taches: [], rdv: [], liens: LIENS_DEFAUT };
+let etat = { taches: [], rdv: [], recurrentes: [], liens: LIENS_DEFAUT };
 let jourAffiche = '';
 
 const enregistrer = () => stockage.ecrire('matin', etat);
@@ -153,8 +153,38 @@ $('meteo').addEventListener('click', (e) => {
 $('fermer-detail').addEventListener('click', () => $('detail-meteo').close());
 $('detail-meteo').addEventListener('click', (e) => { if (e.target === $('detail-meteo')) $('detail-meteo').close(); });
 
+// ---------- Tâches récurrentes ----------
+const NOMS_JOURS = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
+const libelleRegle = (r) => r === 'jour' ? 'chaque jour' : r.startsWith('sem:') ? 'chaque ' + NOMS_JOURS[Number(r.slice(4)) - 1] : 'le ' + r.slice(5) + ' du mois';
+// Crée la tâche du jour pour chaque récurrente due aujourd'hui (une seule fois par jour).
+function genererRecurrentes() {
+  const auj = isoJour(new Date());
+  let change = false;
+  for (const r of etat.recurrentes || []) {
+    if (r.derniere === auj || !window.commun.recurrenteDue(r.regle, auj)) continue;
+    r.derniere = auj;
+    // pas de doublon si la précédente n'est pas encore faite
+    if (!etat.taches.some((t) => t.rec === r.id && !t.fait)) etat.taches.push({ id: uid(), texte: r.texte, fait: false, cree: auj, rec: r.id });
+    change = true;
+  }
+  if (change) enregistrer();
+}
+function afficherRecurrentes() {
+  const l = etat.recurrentes || [];
+  $('bloc-recurrentes').hidden = !l.length;
+  $('liste-recurrentes').innerHTML = l.map((r) => `<li data-id="${r.id}"><span style="flex:1">${echapper(r.texte)}</span><span class="puce">${libelleRegle(r.regle)}</span><button class="discret suppr" aria-label="Arrêter de répéter">✕</button></li>`).join('');
+}
+$('liste-recurrentes').addEventListener('click', (e) => {
+  const li = e.target.closest('li[data-id]');
+  if (!li || !e.target.matches('.suppr')) return;
+  etat.recurrentes = etat.recurrentes.filter((r) => r.id !== li.dataset.id);
+  enregistrer(); afficherRecurrentes();
+});
+
 // ---------- Tâches ----------
 function afficherTaches() {
+  genererRecurrentes();
+  afficherRecurrentes();
   const auj = isoJour(new Date());
   // les tâches faites un jour précédent disparaissent ; les non faites restent (en retard)
   etat.taches = etat.taches.filter((t) => !(t.fait && t.faitLe && t.faitLe < auj));
@@ -184,8 +214,12 @@ $('form-tache').addEventListener('submit', (e) => {
   e.preventDefault();
   const texte = $('nouvelle-tache').value.trim();
   if (!texte) return;
-  etat.taches.push({ id: uid(), texte, fait: false, cree: isoJour(new Date()) });
+  let regle = $('repetition').value;
+  if (regle === 'mois') regle = 'mois:' + new Date().getDate();
+  if (regle) (etat.recurrentes ||= []).push({ id: uid(), texte, regle });
+  else etat.taches.push({ id: uid(), texte, fait: false, cree: isoJour(new Date()) });
   $('nouvelle-tache').value = '';
+  $('repetition').value = '';
   enregistrer(); afficherTaches();
 });
 

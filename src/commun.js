@@ -112,10 +112,22 @@
     },
   };
 
+  // Tâche récurrente due ce jour-là ? regle : "jour" | "sem:1".."sem:7" (1 = lundi) | "mois:1".."mois:31"
+  // (le 31 tombe le dernier jour des mois plus courts)
+  function recurrenteDue(regle, iso) {
+    const [a, m, j] = iso.split('-').map(Number);
+    const d = new Date(a, m - 1, j);
+    if (regle === 'jour') return true;
+    const [type, n] = regle.split(':');
+    if (type === 'sem') return indexJour(d) + 1 === Number(n);
+    if (type === 'mois') return j === Math.min(Number(n), new Date(a, m, 0).getDate());
+    return false;
+  }
+
   const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
   const echapper = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-  const commun = { JOURS, JOURS_LONGS, lundi, isoJour, decaler, indexJour, lireIngredient, listeCourses, formatQte, correspond, proposerRepas, stockage, uid, echapper };
+  const commun = { JOURS, JOURS_LONGS, lundi, isoJour, decaler, indexJour, lireIngredient, listeCourses, formatQte, correspond, proposerRepas, recurrenteDue, stockage, uid, echapper };
   if (typeof module !== 'undefined') module.exports = commun;
   else racine.commun = commun;
 })(typeof window !== 'undefined' ? window : globalThis);

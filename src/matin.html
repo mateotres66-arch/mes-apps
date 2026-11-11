@@ -93,8 +93,19 @@
       <ul class="liste" id="liste-taches"></ul>
       <form class="ligne-form" id="form-tache">
         <input id="nouvelle-tache" placeholder="Ajouter une tâche…" aria-label="Nouvelle tâche" maxlength="200" required>
+        <select id="repetition" aria-label="Répétition" style="flex:none;max-width:150px">
+          <option value="">Une fois</option>
+          <option value="jour">Chaque jour</option>
+          <option value="sem:1">Chaque lundi</option><option value="sem:2">Chaque mardi</option><option value="sem:3">Chaque mercredi</option>
+          <option value="sem:4">Chaque jeudi</option><option value="sem:5">Chaque vendredi</option><option value="sem:6">Chaque samedi</option><option value="sem:7">Chaque dimanche</option>
+          <option value="mois">Chaque mois (ce jour-là)…</option>
+        </select>
         <button>Ajouter</button>
       </form>
+      <details id="bloc-recurrentes" hidden>
+        <summary>Tâches qui reviennent</summary>
+        <ul class="liste" id="liste-recurrentes"></ul>
+      </details>
     </section>
 
     <section class="carte repas apparait" aria-labelledby="t-repas">

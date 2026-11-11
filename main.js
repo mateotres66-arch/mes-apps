@@ -38,8 +38,24 @@ ipcMain.handle('ouvrir', async (_e, cible) => {
 
 if (!app.requestSingleInstanceLock()) app.quit();
 
+// Sauvegarde hebdomadaire dans Documents\MesApps-sauvegardes (le plan gratuit Supabase n'en fait pas).
+function sauvegardeHebdo() {
+  const dossier = path.join(app.getPath('documents'), 'MesApps-sauvegardes');
+  fs.mkdirSync(dossier, { recursive: true });
+  const existantes = fs.readdirSync(dossier).filter((f) => /^\d{4}-\d{2}-\d{2}\.json$/.test(f)).sort();
+  const derniere = existantes.at(-1)?.slice(0, 10);
+  const auj = new Date().toISOString().slice(0, 10);
+  if (derniere && (new Date(auj) - new Date(derniere)) / 864e5 < 7) return;
+  const lire = (cle) => { try { return JSON.parse(fs.readFileSync(fichier(cle), 'utf8')); } catch { return null; } };
+  const donnees = { matin: lire('matin'), repas: lire('repas') };
+  if (!donnees.matin && !donnees.repas) return;
+  fs.writeFileSync(path.join(dossier, auj + '.json'), JSON.stringify({ date: auj, ...donnees }, null, 2));
+  existantes.slice(0, Math.max(0, existantes.length + 1 - 12)).forEach((f) => fs.rmSync(path.join(dossier, f))); // garde les 12 dernières
+}
+
 let fenetre;
 app.whenReady().then(() => {
+  if (nom === 'matin') { try { sauvegardeHebdo(); } catch (e) { console.error('sauvegarde', e); } }
   Menu.setApplicationMenu(null);
   fenetre = new BrowserWindow({
     width: conf.largeur,
