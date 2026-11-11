@@ -17,7 +17,13 @@ async function chargerSecrets() {
   CRON_SECRET = cron.data ?? '';
 }
 const SUJET = 'https://mateotres66-arch.github.io/mes-apps/';
-const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, apikey, content-type' };
+// supabase-js ajoute ses propres en-têtes (x-client-info…) : on accepte ceux que le navigateur annonce
+let CORS: Record<string, string> = {};
+const cors = (req: Request) => ({
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': req.headers.get('access-control-request-headers') ?? 'authorization, x-client-info, apikey, content-type',
+});
 
 // Heure de Paris
 function maintenantParis() {
@@ -72,6 +78,7 @@ async function envoyerA(userId: string, date: string) {
 }
 
 Deno.serve(async (req) => {
+  CORS = cors(req);
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
   await chargerSecrets();
   if (!VAPID) return new Response('VAPID manquant', { status: 500, headers: CORS });
