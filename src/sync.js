@@ -22,6 +22,8 @@
     auth: { persistSession: true, autoRefreshToken: true, storage: stockageSession, storageKey: 'mesapps-auth' },
   });
 
+  // accès pour les autres modules (briefing) : client et utilisateur connecté
+  window.commun.sync = { sb, utilisateur: () => utilisateur };
   const abonnes = {};
   let utilisateur = null;
   let connexionManuelle = false;

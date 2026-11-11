@@ -50,6 +50,23 @@ fs.writeFileSync(path.join(web, 'sw.js'), `const CACHE = 'mesapps-${version}';
 const FICHIERS = ${JSON.stringify(['./', ...fichiers.map((f) => './' + f), './pwa.js', './manifest-matin.json', './manifest-repas.json', './matin.png', './repas.png'].filter((v, i, t) => t.indexOf(v) === i && v !== './'))};
 self.addEventListener('install', (e) => { e.waitUntil(caches.open(CACHE).then((c) => c.addAll(FICHIERS))); self.skipWaiting(); });
 self.addEventListener('activate', (e) => { e.waitUntil(caches.keys().then((k) => Promise.all(k.filter((n) => n !== CACHE).map((n) => caches.delete(n))))); self.clients.claim(); });
+// briefing du matin envoyé par la fonction Supabase
+self.addEventListener('push', (e) => {
+  let d = { title: 'Ton briefing', body: '', url: './matin.html?briefing=1' };
+  try { d = { ...d, ...e.data.json() }; } catch {}
+  e.waitUntil(self.registration.showNotification(d.title, {
+    body: d.body, icon: 'matin.png', badge: 'matin.png', tag: 'briefing', renotify: true,
+    data: { url: d.url }, actions: [{ action: 'ecouter', title: '🔊 Écouter' }],
+  }));
+});
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close();
+  const url = new URL(e.notification.data?.url || './matin.html?briefing=1', self.registration.scope).href;
+  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((liste) => {
+    const c = liste.find((x) => x.url.includes('matin.html'));
+    return c ? c.navigate(url).then((w) => (w || c).focus()) : self.clients.openWindow(url);
+  }));
+});
 self.addEventListener('fetch', (e) => {
   if (new URL(e.request.url).origin !== location.origin) return;
   e.respondWith(fetch(e.request).then((r) => { const copie = r.clone(); caches.open(CACHE).then((c) => c.put(e.request, copie)); return r; }).catch(() => caches.match(e.request)));
