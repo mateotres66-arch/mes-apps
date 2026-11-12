@@ -14,51 +14,77 @@
     const n = new Date();
     const auj = isoJour(n);
     const date = n.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
-    const morceaux = [`Bonjour Mateo. Nous sommes ${date}.`];
+    const morceaux = [`Bonjour Mateo ! On est ${date}.`];
     const d = typeof derniereMeteo !== 'undefined' ? derniereMeteo : null; // défini par matin.js
     if (d?.daily) {
       const ciel = (CODES.find(([l]) => l.includes(d.daily.weather_code[0])) || [[], ''])[1];
       const pluie = d.daily.precipitation_probability_max[0] ?? 0;
-      morceaux.push(`À Canet, aujourd’hui : ${ciel}, de ${Math.round(d.daily.temperature_2m_min[0])} à ${Math.round(d.daily.temperature_2m_max[0])} degrés.`
-        + (pluie >= 40 ? ` Risque de pluie : ${pluie} pour cent, prends un parapluie.` : pluie > 0 ? ` Peu de risque de pluie.` : ''));
-      if (d.current) morceaux.push(`Il fait actuellement ${Math.round(d.current.temperature_2m)} degrés.`);
+      morceaux.push(`Côté météo à Canet, temps ${ciel}, entre ${Math.round(d.daily.temperature_2m_min[0])} et ${Math.round(d.daily.temperature_2m_max[0])} degrés.`
+        + (pluie >= 40 ? ` Il y a ${pluie} pour cent de risque de pluie, pense à prendre un parapluie.` : pluie > 0 ? ` Normalement, pas de pluie.` : ''));
+      if (d.current) morceaux.push(`En ce moment, il fait ${Math.round(d.current.temperature_2m)} degrés.`);
     }
     const e = typeof etat !== 'undefined' ? etat : { rdv: [], taches: [] }; // défini par matin.js
     const boulot = window.commun.creneauDuJour(e.planning, auj);
-    morceaux.push(boulot ? `Tu travailles aujourd’hui de ${heureParlee(boulot.debut)} à ${heureParlee(boulot.fin)}${boulot.pause ? `, avec une pause de ${heureParlee(boulot.pause.debut)} à ${heureParlee(boulot.pause.fin)}` : ''}.` : `Aujourd’hui, tu ne travailles pas.`);
+    morceaux.push(boulot ? `Niveau boulot, tu travailles de ${heureParlee(boulot.debut)} à ${heureParlee(boulot.fin)}${boulot.pause ? `, avec une pause de ${heureParlee(boulot.pause.debut)} à ${heureParlee(boulot.pause.fin)}` : ''}.` : `Aujourd’hui, pas de boulot, tu es de repos.`);
     const rdv = (e.rdv || []).filter((r) => r.date === auj).sort((a, b) => (a.heure || '').localeCompare(b.heure || ''));
     morceaux.push(rdv.length
-      ? `Aujourd’hui, tu as : ${rdv.map((r) => (r.heure ? r.texte + ' à ' + heureParlee(r.heure) : r.texte)).join(', puis ')}.`
-      : `Tu n’as aucun rendez-vous aujourd’hui.`);
+      ? `Dans ton agenda : ${rdv.map((r) => (r.heure ? r.texte + ' à ' + heureParlee(r.heure) : r.texte)).join(', puis ')}.`
+      : `Rien de prévu dans ton agenda.`);
     const taches = (e.taches || []).filter((t) => !t.fait);
-    if (taches.length) morceaux.push(`Tu as ${taches.length} tâche${taches.length > 1 ? 's' : ''} à faire : ${taches.slice(0, 5).map((t) => t.texte).join(', ')}${taches.length > 5 ? ', et d’autres' : ''}.`);
+    if (taches.length) morceaux.push(`Il te reste ${taches.length} tâche${taches.length > 1 ? 's' : ''} : ${taches.slice(0, 5).map((t) => t.texte).join(', ')}${taches.length > 5 ? ', et d’autres' : ''}.`);
     const r = await stockage.lire('repas');
     const menu = r?.menus?.[lundi(n)] || {};
     const j = JOURS[indexJour(n)];
     const nom = (id) => r?.recettes?.find((x) => x.id === id)?.nom;
     const midi = nom(menu[j + '-midi']), soir = nom(menu[j + '-soir']);
-    if (midi || soir) morceaux.push(`Au menu : ${[midi && 'à midi, ' + midi, soir && 'ce soir, ' + soir].filter(Boolean).join(' ; ')}.`);
-    morceaux.push('Bonne journée !');
+    if (midi || soir) morceaux.push(`Pour manger, ${[midi && 'à midi c’est ' + midi, soir && 'ce soir ' + soir].filter(Boolean).join(', et ')}.`);
+    morceaux.push('Passe une bonne journée !');
     return morceaux.join(' ');
   }
 
   // ---------- Voix ----------
-  let parle = false;
+  // 1) voix naturelle Google (fonction Supabase « voix », compte connecté) ; 2) sinon voix de l'appareil
+  const SILENCE = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
+  let parle = false, lecteur = null;
   function voixFr() {
     const v = speechSynthesis.getVoices().filter((x) => x.lang?.toLowerCase().startsWith('fr'));
     return v.find((x) => /natural|online|google|denise|hortense|amelie|audrey/i.test(x.name)) || v[0] || null;
   }
-  async function ecouter() {
-    if (!('speechSynthesis' in window)) { alert('La synthèse vocale n’est pas disponible sur cet appareil.'); return; }
-    if (parle) { speechSynthesis.cancel(); parle = false; majBoutonVoix(); return; }
-    const u = new SpeechSynthesisUtterance(await texteBriefing());
-    u.lang = 'fr-FR';
-    u.voice = voixFr();
-    u.rate = 1;
-    u.onend = u.onerror = () => { parle = false; majBoutonVoix(); };
+  function arreter() {
+    if ('speechSynthesis' in window) speechSynthesis.cancel();
+    if (lecteur) { lecteur.pause(); lecteur = null; }
+    parle = false; majBoutonVoix();
+  }
+  async function audioGoogle(texte) {
+    const s = sync();
+    if (!s?.utilisateur()) return null;
+    try {
+      const { data, error } = await s.sb.functions.invoke('voix', { body: { texte } });
+      return error || !data?.audio ? null : 'data:audio/mpeg;base64,' + data.audio;
+    } catch { return null; }
+  }
+  function voixAppareil(texte) {
+    if (!('speechSynthesis' in window)) { alert('La synthèse vocale n’est pas disponible sur cet appareil.'); return arreter(); }
+    const u = new SpeechSynthesisUtterance(texte);
+    u.lang = 'fr-FR'; u.voice = voixFr(); u.rate = 0.95;
+    u.onend = u.onerror = arreter;
     speechSynthesis.cancel();
     speechSynthesis.speak(u);
+  }
+  async function ecouter() {
+    if (parle) return arreter();
     parle = true; majBoutonVoix();
+    // lecteur créé pendant l'appui : l'iPhone autorise ensuite la lecture, même après l'attente réseau
+    const a = new Audio(SILENCE);
+    a.play().catch(() => {});
+    lecteur = a;
+    const texte = await texteBriefing();
+    const mp3 = await audioGoogle(texte);
+    if (lecteur !== a) return; // arrêté pendant le chargement
+    if (!mp3) { lecteur = null; return voixAppareil(texte); }
+    a.src = mp3;
+    a.onended = a.onerror = arreter;
+    a.play().catch(() => { lecteur = null; voixAppareil(texte); });
   }
 
   // ---------- Interface ----------
@@ -85,7 +111,7 @@
   boite.className = 'actions-entete';
   boite.innerHTML = `<button id="bouton-voix" type="button">🔊 Écouter mon briefing</button><button id="bouton-reveil" type="button" class="contour">⏰ Réveil &amp; notifs</button>`;
   entete.insertBefore(boite, $('heure'));
-  const majBoutonVoix = () => { $('bouton-voix').textContent = parle ? '⏹ Arrêter' : '🔊 Écouter mon briefing'; };
+  const majBoutonVoix = () => { if ($('bouton-voix')) $('bouton-voix').textContent = parle ? '⏹ Arrêter' : '🔊 Écouter mon briefing'; };
   $('bouton-voix').onclick = ecouter;
 
   // ouvert depuis la notification : gros bouton (la voix a besoin d'un appui sur l'écran)

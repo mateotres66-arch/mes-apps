@@ -17,3 +17,11 @@ Fichiers JSON dans `%APPDATA%\MesApps\donnees\` (`matin.json`, `repas.json`). Sa
 ## Tests
 
 `npm test` vérifie le calcul de la liste de courses et des semaines.
+
+## Voix naturelle du briefing (Google Cloud Text-to-Speech)
+
+Fonction Supabase `voix`. Sans clé ou sans connexion, l'app utilise la voix de l'appareil.
+
+1. Google Cloud : créer un projet, activer « Cloud Text-to-Speech API », créer une clé API (Identifiants) limitée à cette API.
+2. Supabase : Edge Functions > Secrets, ajouter `GOOGLE_TTS_KEY` = la clé.
+3. Déployer : `supabase functions deploy voix`.
