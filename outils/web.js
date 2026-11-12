@@ -16,7 +16,7 @@ for (const nom of ['matin', 'repas']) {
 }
 
 const APPS = {
-  matin: { name: 'Tableau du matin', short_name: 'Matin', theme: '#d2622a' },
+  matin: { name: 'Tableau du matin', short_name: 'Matin', theme: '#0f1115' }, // = fond du thème Nuit : barres du téléphone sombres
   repas: { name: 'Repas & courses', short_name: 'Repas', theme: '#3f7a4f' },
 };
 const fichiers = fs.readdirSync(web, { recursive: true }).filter((f) => fs.statSync(path.join(web, f)).isFile()).map((f) => f.replace(/\\/g, '/'));
