@@ -27,8 +27,9 @@
   .semaine .js.auj { border-color: var(--accent); background: var(--accent-doux); }
   .semaine .js.auj b { color: var(--accent); }
   @media (max-width: 640px) { .semaine { grid-template-columns: 1fr; } .semaine .js { flex-direction: row; justify-content: space-between; align-items: center; } }
-  .reglage-jours { display: grid; gap: 6px; margin-top: 10px; }
+  .reglage-jours:not([hidden]) { display: grid; gap: 6px; margin-top: 10px; }
   .reglage-jours > div { display: grid; grid-template-columns: 130px 110px 110px; gap: 8px; align-items: center; }
+  .reglage-jours input:disabled { opacity: .4; }
   .reglage-jours label { display: flex; gap: 8px; align-items: center; cursor: pointer; }
   @media (max-width: 420px) { .reglage-jours > div { grid-template-columns: 1fr 1fr; } .reglage-jours label { grid-column: span 2; } }
   @media (max-width: 980px) { .grille > * { grid-column: span 12 !important; grid-row: auto !important; } }
@@ -154,10 +155,8 @@
     <section class="carte planning apparait" aria-labelledby="t-planning">
       <h2 id="t-planning">Mon planning <span class="compte" id="planning-auj"></span></h2>
       <div class="semaine" id="semaine"></div>
-      <details>
-        <summary>Modifier mes jours de travail</summary>
-        <div class="reglage-jours" id="reglage-jours"></div>
-      </details>
+      <button type="button" class="contour" id="modif-planning" aria-expanded="false" aria-controls="reglage-jours" style="width:100%;margin-top:12px">✏️ Modifier mes jours de travail</button>
+      <div class="reglage-jours" id="reglage-jours" hidden></div>
     </section>
   </div>
 </div>

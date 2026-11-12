@@ -285,6 +285,12 @@ function afficherPlanning() {
       <input type="time" class="fin" value="${p?.fin || '17:00'}" aria-label="Fin ${nom}" ${p ? '' : 'disabled'}></div>`;
   }).join('');
 }
+$('modif-planning').addEventListener('click', () => {
+  const ouvert = $('reglage-jours').hidden;
+  $('reglage-jours').hidden = !ouvert;
+  $('modif-planning').setAttribute('aria-expanded', ouvert);
+  $('modif-planning').textContent = ouvert ? '✓ Terminé' : '✏️ Modifier mes jours de travail';
+});
 $('reglage-jours').addEventListener('change', (e) => {
   const ligne = e.target.closest('[data-j]');
   if (!ligne) return;
