@@ -131,10 +131,14 @@
   };
   const heureCourte = (h) => h ? h.replace(/^0/, '').replace(':00', 'h').replace(':', 'h') : '';
 
+  // "9h – 17h · pause 13h – 14h" ; pause : {debut, fin} facultative, à l'intérieur de la journée
+  const texteCreneau = (c) => `${heureCourte(c.debut)} – ${heureCourte(c.fin)}` + (c.pause ? ` · pause ${heureCourte(c.pause.debut)} – ${heureCourte(c.pause.fin)}` : '');
+  const pauseValide = (c) => c.pause.debut < c.pause.fin && c.pause.debut > c.debut && c.pause.fin < c.fin;
+
   const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
   const echapper = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-  const commun = { JOURS, JOURS_LONGS, lundi, isoJour, decaler, indexJour, lireIngredient, listeCourses, formatQte, correspond, proposerRepas, recurrenteDue, creneauDuJour, heureCourte, stockage, uid, echapper };
+  const commun = { JOURS, JOURS_LONGS, lundi, isoJour, decaler, indexJour, lireIngredient, listeCourses, formatQte, correspond, proposerRepas, recurrenteDue, creneauDuJour, heureCourte, texteCreneau, pauseValide, stockage, uid, echapper };
   if (typeof module !== 'undefined') module.exports = commun;
   else racine.commun = commun;
 })(typeof window !== 'undefined' ? window : globalThis);

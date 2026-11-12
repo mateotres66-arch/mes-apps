@@ -26,15 +26,21 @@
   .semaine .js.repos strong { color: var(--doux); font-weight: 500; font-style: italic; }
   .semaine .js.auj { border-color: var(--accent); background: var(--accent-doux); }
   .semaine .js.auj b { color: var(--accent); }
-  @media (max-width: 640px) { .semaine { grid-template-columns: 1fr; } .semaine .js { flex-direction: row; justify-content: space-between; align-items: center; } }
+  @media (max-width: 640px) { .semaine { grid-template-columns: 1fr; } .semaine .js { flex-direction: row; justify-content: space-between; align-items: center; } .semaine .js .h { text-align: right; } }
   #fen-planning { width: min(480px, calc(100vw - 32px)); max-height: calc(100vh - 32px); border: 1px solid var(--ligne); border-radius: 16px; background: var(--carte); color: var(--encre); padding: 22px; box-shadow: var(--ombre); }
   #fen-planning::backdrop { background: rgba(10, 10, 14, .55); }
-  #fen-planning .jour-p { display: grid; grid-template-columns: 1fr 104px 104px; gap: 8px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--ligne); }
+  #fen-planning .jour-p { padding: 8px 0; border-bottom: 1px solid var(--ligne); display: grid; gap: 6px; }
   #fen-planning .jour-p:last-of-type { border-bottom: 0; }
-  #fen-planning .jour-p label { display: flex; gap: 10px; align-items: center; cursor: pointer; text-transform: capitalize; font-weight: 500; }
+  #fen-planning .rang { display: grid; grid-template-columns: 1fr 104px 104px; gap: 8px; align-items: center; }
+  #fen-planning .rang label { display: flex; gap: 10px; align-items: center; cursor: pointer; text-transform: capitalize; font-weight: 500; }
+  #fen-planning .rang.pause label { font-weight: 400; font-size: 13px; color: var(--doux); padding-left: 28px; text-transform: none; }
+  #fen-planning .rang.pause:has(input:disabled:first-child) { display: none; }
+  #planning-msg { color: var(--rouge); font-size: 13px; min-height: 1em; margin-top: 8px; }
+  .semaine .js small { font-size: 12px; color: var(--doux); }
+  .semaine .js .h { display: flex; flex-direction: column; }
   #fen-planning input:disabled { opacity: .35; }
   #fen-planning .act { display: flex; gap: 8px; margin-top: 8px; position: sticky; bottom: -22px; background: var(--carte); padding: 12px 0 22px; margin-bottom: -22px; }
-  @media (max-width: 400px) { #fen-planning .jour-p { grid-template-columns: 1fr 1fr; } #fen-planning .jour-p label { grid-column: span 2; } }
+  @media (max-width: 400px) { #fen-planning .rang { grid-template-columns: 1fr 1fr; } #fen-planning .rang label { grid-column: span 2; } }
   @media (max-width: 980px) { .grille > * { grid-column: span 12 !important; grid-row: auto !important; } }
   .meteo-now { display: flex; align-items: center; gap: 18px; }
   .meteo-icone { font-size: 54px; line-height: 1; }
@@ -166,6 +172,7 @@
   <h2 id="t-fen-planning" style="margin:0 0 4px">💼 Mon planning de travail</h2>
   <p class="petit" style="margin:0 0 8px">Coche les jours où tu travailles et tes horaires. Ça se répète chaque semaine.</p>
   <div id="planning-jours"></div>
+  <div id="planning-msg" role="status"></div>
   <div class="act"><button type="button" id="planning-ok">Enregistrer</button><button type="button" class="discret" id="planning-fermer">Annuler</button></div>
 </dialog>
 <dialog id="detail-meteo" aria-labelledby="t-detail">

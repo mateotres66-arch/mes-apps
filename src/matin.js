@@ -263,7 +263,7 @@ async function afficherRepas() {
 }
 
 // ---------- Planning de travail (récurrent, chaque semaine) ----------
-const { creneauDuJour, heureCourte } = window.commun;
+const { creneauDuJour, heureCourte, texteCreneau, pauseValide } = window.commun;
 const plage = (c) => `${heureCourte(c.debut)} – ${heureCourte(c.fin)}`;
 function afficherPlanning() {
   const auj = isoJour(new Date());
@@ -272,32 +272,49 @@ function afficherPlanning() {
     const iso = window.commun.decaler(debutSem, i);
     const c = creneauDuJour(etat.planning, iso);
     const date = new Date(iso + 'T12:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
-    return `<div class="js ${c ? '' : 'repos'} ${iso === auj ? 'auj' : ''}"><b>${nom[0].toUpperCase() + nom.slice(1)} ${date}</b><strong>${c ? plage(c) : 'Repos'}</strong></div>`;
+    return `<div class="js ${c ? '' : 'repos'} ${iso === auj ? 'auj' : ''}"><b>${nom[0].toUpperCase() + nom.slice(1)} ${date}</b><span class="h"><strong>${c ? plage(c) : 'Repos'}</strong>${c?.pause ? `<small>pause ${heureCourte(c.pause.debut)} – ${heureCourte(c.pause.fin)}</small>` : ''}</span></div>`;
   }).join('');
   const c = creneauDuJour(etat.planning, auj);
-  $('planning-auj').textContent = c ? `Aujourd'hui : boulot ${plage(c)}` : "Aujourd'hui : repos";
+  $('planning-auj').textContent = c ? `Aujourd'hui : boulot ${texteCreneau(c)}` : "Aujourd'hui : repos";
 }
 // Fenêtre de réglage : rien n'est changé avant « Enregistrer »
 $('modif-planning').addEventListener('click', () => {
+  $('planning-msg').textContent = '';
   $('planning-jours').innerHTML = NOMS_JOURS.map((nom, i) => {
     const p = etat.planning?.[i + 1];
-    return `<div class="jour-p" data-j="${i + 1}"><label><input type="checkbox" ${p ? 'checked' : ''}> ${nom}</label>
-      <input type="time" class="debut" value="${p?.debut || '09:00'}" aria-label="Début ${nom}" ${p ? '' : 'disabled'}>
-      <input type="time" class="fin" value="${p?.fin || '17:00'}" aria-label="Fin ${nom}" ${p ? '' : 'disabled'}></div>`;
+    const off = p ? '' : 'disabled', offP = p?.pause ? '' : 'disabled';
+    return `<div class="jour-p" data-j="${i + 1}">
+      <div class="rang"><label><input type="checkbox" class="travail" ${p ? 'checked' : ''}> ${nom}</label>
+        <input type="time" class="debut" value="${p?.debut || '09:00'}" aria-label="Début ${nom}" ${off}>
+        <input type="time" class="fin" value="${p?.fin || '17:00'}" aria-label="Fin ${nom}" ${off}></div>
+      <div class="rang pause"><label><input type="checkbox" class="a-pause" ${p?.pause ? 'checked' : ''} ${off}> ☕ Pause</label>
+        <input type="time" class="p-debut" value="${p?.pause?.debut || '13:00'}" aria-label="Début de pause ${nom}" ${offP}>
+        <input type="time" class="p-fin" value="${p?.pause?.fin || '14:00'}" aria-label="Fin de pause ${nom}" ${offP}></div></div>`;
   }).join('');
   $('fen-planning').showModal();
 });
 $('planning-jours').addEventListener('change', (e) => {
   const ligne = e.target.closest('[data-j]');
   if (!ligne || e.target.type !== 'checkbox') return;
-  ligne.querySelectorAll('input[type=time]').forEach((x) => { x.disabled = !e.target.checked; });
+  const q = (c) => ligne.querySelector(c);
+  const travail = q('.travail').checked, pause = travail && q('.a-pause').checked;
+  q('.debut').disabled = q('.fin').disabled = q('.a-pause').disabled = !travail;
+  q('.p-debut').disabled = q('.p-fin').disabled = !pause;
 });
 $('planning-ok').addEventListener('click', () => {
-  etat.planning = {};
+  const nouveau = {};
   for (const ligne of $('planning-jours').querySelectorAll('[data-j]')) {
-    const [coche, debut, fin] = ligne.querySelectorAll('input');
-    if (coche.checked) etat.planning[ligne.dataset.j] = { debut: debut.value || '09:00', fin: fin.value || '17:00' };
+    const q = (c) => ligne.querySelector(c);
+    if (!q('.travail').checked) continue;
+    const c = { debut: q('.debut').value || '09:00', fin: q('.fin').value || '17:00' };
+    if (c.debut >= c.fin) return ($('planning-msg').textContent = `${NOMS_JOURS[ligne.dataset.j - 1]} : la fin doit être après le début.`);
+    if (q('.a-pause').checked) {
+      c.pause = { debut: q('.p-debut').value, fin: q('.p-fin').value };
+      if (!pauseValide(c)) return ($('planning-msg').textContent = `${NOMS_JOURS[ligne.dataset.j - 1]} : la pause doit être pendant la journée, et finir après avoir commencé.`);
+    }
+    nouveau[ligne.dataset.j] = c;
   }
+  etat.planning = nouveau;
   enregistrer(); afficherPlanning();
   $('fen-planning').close();
 });

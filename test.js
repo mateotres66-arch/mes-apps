@@ -45,6 +45,13 @@ assert.strictEqual(c.creneauDuJour(undefined, '2026-11-09'), null);
 assert.strictEqual(c.heureCourte('09:00'), '9h');
 assert.strictEqual(c.heureCourte('17:30'), '17h30');
 
+const coupe = { debut: '09:00', fin: '17:00', pause: { debut: '13:00', fin: '14:00' } };
+assert.strictEqual(c.texteCreneau(coupe), '9h – 17h · pause 13h – 14h');
+assert.strictEqual(c.texteCreneau(plan[1]), '9h – 17h30');
+assert.ok(c.pauseValide(coupe));
+assert.ok(!c.pauseValide({ ...coupe, pause: { debut: '14:00', fin: '13:00' } })); // à l'envers
+assert.ok(!c.pauseValide({ ...coupe, pause: { debut: '08:00', fin: '10:00' } })); // hors journée
+
 // Idées repas
 const { BIBLIOTHEQUE, PLACARD } = require('./src/bibliotheque.js');
 const lib = BIBLIOTHEQUE.map(([nom, portions, ingredients]) => ({ nom, portions, ingredients }));

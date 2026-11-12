@@ -61,7 +61,7 @@ async function message(userId: string, date: string) {
   const lignes = [meteo];
   const [a, m, j] = date.split('-').map(Number);
   const boulot = matin.planning?.[(new Date(Date.UTC(a, m - 1, j)).getUTCDay() + 6) % 7 + 1];
-  lignes.push(boulot ? `💼 Boulot ${boulot.debut.replace(':', 'h')} – ${boulot.fin.replace(':', 'h')}` : '🌴 Repos aujourd’hui');
+  lignes.push(boulot ? `💼 Boulot ${boulot.debut.replace(':', 'h')} – ${boulot.fin.replace(':', 'h')}${boulot.pause ? ` (pause ${boulot.pause.debut.replace(':', 'h')} – ${boulot.pause.fin.replace(':', 'h')})` : ''}` : '🌴 Repos aujourd’hui');
   lignes.push(rdv.length ? '📅 ' + rdv.map((x: any) => (x.heure ? x.heure.replace(':', 'h') + ' ' : '') + x.texte).join(' · ') : '📅 Rien de prévu');
   if (taches) lignes.push(`✅ ${taches} tâche${taches > 1 ? 's' : ''} à faire`);
   return JSON.stringify({ title: 'Bonjour Mateo 👋 Ton briefing', body: lignes.filter(Boolean).join('\n'), url: './matin.html?briefing=1' });
