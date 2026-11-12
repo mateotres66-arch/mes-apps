@@ -276,31 +276,32 @@ function afficherPlanning() {
   }).join('');
   const c = creneauDuJour(etat.planning, auj);
   $('planning-auj').textContent = c ? `Aujourd'hui : boulot ${plage(c)}` : "Aujourd'hui : repos";
-  // ne pas redessiner les réglages pendant qu'on tape une heure dedans
-  if ($('reglage-jours').contains(document.activeElement)) return;
-  $('reglage-jours').innerHTML = NOMS_JOURS.map((nom, i) => {
+}
+// Fenêtre de réglage : rien n'est changé avant « Enregistrer »
+$('modif-planning').addEventListener('click', () => {
+  $('planning-jours').innerHTML = NOMS_JOURS.map((nom, i) => {
     const p = etat.planning?.[i + 1];
-    return `<div data-j="${i + 1}"><label><input type="checkbox" ${p ? 'checked' : ''}> <span style="text-transform:capitalize">${nom}</span></label>
+    return `<div class="jour-p" data-j="${i + 1}"><label><input type="checkbox" ${p ? 'checked' : ''}> ${nom}</label>
       <input type="time" class="debut" value="${p?.debut || '09:00'}" aria-label="Début ${nom}" ${p ? '' : 'disabled'}>
       <input type="time" class="fin" value="${p?.fin || '17:00'}" aria-label="Fin ${nom}" ${p ? '' : 'disabled'}></div>`;
   }).join('');
-}
-$('modif-planning').addEventListener('click', () => {
-  const ouvert = $('reglage-jours').hidden;
-  $('reglage-jours').hidden = !ouvert;
-  $('modif-planning').setAttribute('aria-expanded', ouvert);
-  $('modif-planning').textContent = ouvert ? '✓ Terminé' : '✏️ Modifier mes jours de travail';
+  $('fen-planning').showModal();
 });
-$('reglage-jours').addEventListener('change', (e) => {
+$('planning-jours').addEventListener('change', (e) => {
   const ligne = e.target.closest('[data-j]');
-  if (!ligne) return;
-  const [coche, debut, fin] = ligne.querySelectorAll('input');
-  debut.disabled = fin.disabled = !coche.checked;
-  etat.planning ||= {};
-  if (coche.checked) etat.planning[ligne.dataset.j] = { debut: debut.value || '09:00', fin: fin.value || '17:00' };
-  else delete etat.planning[ligne.dataset.j];
-  enregistrer(); afficherPlanning();
+  if (!ligne || e.target.type !== 'checkbox') return;
+  ligne.querySelectorAll('input[type=time]').forEach((x) => { x.disabled = !e.target.checked; });
 });
+$('planning-ok').addEventListener('click', () => {
+  etat.planning = {};
+  for (const ligne of $('planning-jours').querySelectorAll('[data-j]')) {
+    const [coche, debut, fin] = ligne.querySelectorAll('input');
+    if (coche.checked) etat.planning[ligne.dataset.j] = { debut: debut.value || '09:00', fin: fin.value || '17:00' };
+  }
+  enregistrer(); afficherPlanning();
+  $('fen-planning').close();
+});
+$('planning-fermer').addEventListener('click', () => $('fen-planning').close());
 
 // ---------- Raccourcis ----------
 function afficherLiens() {

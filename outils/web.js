@@ -40,7 +40,9 @@ for (const [nom, a] of Object.entries(APPS)) {
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="${a.short_name}">`)
-    .replace('</body>', `<script src="pwa.js"></script>\n</body>`);
+    .replace('</body>', `<script src="pwa.js"></script>\n</body>`)
+    // ?v= : le navigateur ne peut pas mélanger une page neuve avec un ancien script en cache
+    .replace(/(src|href)="([\w/.-]+\.(?:js|css))"/g, `$1="$2?v=${version}"`);
   fs.writeFileSync(f, html);
 }
 
@@ -69,7 +71,7 @@ self.addEventListener('notificationclick', (e) => {
 });
 self.addEventListener('fetch', (e) => {
   if (new URL(e.request.url).origin !== location.origin) return;
-  e.respondWith(fetch(e.request).then((r) => { const copie = r.clone(); caches.open(CACHE).then((c) => c.put(e.request, copie)); return r; }).catch(() => caches.match(e.request)));
+  e.respondWith(fetch(e.request).then((r) => { const copie = r.clone(); caches.open(CACHE).then((c) => c.put(e.request, copie)); return r; }).catch(() => caches.match(e.request, { ignoreSearch: true })));
 });
 `);
 fs.writeFileSync(path.join(web, 'index.html'), `<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=matin.html"><title>Mes apps</title><a href="matin.html">Tableau du matin</a> · <a href="repas.html">Repas &amp; courses</a>`);
