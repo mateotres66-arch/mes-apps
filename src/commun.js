@@ -135,10 +135,52 @@
   const texteCreneau = (c) => `${heureCourte(c.debut)} – ${heureCourte(c.fin)}` + (c.pause ? ` · pause ${heureCourte(c.pause.debut)} – ${heureCourte(c.pause.fin)}` : '');
   const pauseValide = (c) => c.pause.debut < c.pause.fin && c.pause.debut > c.debut && c.pause.fin < c.fin;
 
+  // ---------- Briefing parlé ----------
+  const CIEL = [[[0], 'grand soleil'], [[1], 'ciel plutôt dégagé'], [[2], 'quelques nuages'], [[3], 'ciel couvert'], [[45, 48], 'du brouillard'],
+    [[51, 53, 55, 56, 57], 'de la bruine'], [[61, 63, 65, 66, 67, 80, 81, 82], 'de la pluie'], [[71, 73, 75, 77, 85, 86], 'de la neige'], [[95, 96, 99], 'de l’orage']];
+  const ciel = (c) => (CIEL.find(([l]) => l.includes(c)) || [[], 'temps variable'])[1];
+  // "09:00" -> "9 heures", "12:30" -> "midi 30", "00:15" -> "minuit 15"
+  function heureParlee(h) {
+    const [hh, mm] = h.split(':').map(Number);
+    const base = hh === 0 ? 'minuit' : hh === 12 ? 'midi' : `${hh} heure${hh > 1 ? 's' : ''}`;
+    return base + (mm ? ' ' + mm : '');
+  }
+  const deg = (v) => `${Math.round(v)} degré${Math.abs(Math.round(v)) > 1 ? 's' : ''}`;
+  const virgule = (v) => String(Math.round(v * 10) / 10).replace('.', ',');
+
+  // Météo complète à lire : maintenant, déroulé de la journée, pluie, vent, UV, soleil, conseils, demain.
+  // d : réponse Open-Meteo (current, hourly, daily) ; heure : heure actuelle (0-23).
+  function meteoParlee(d, heure) {
+    if (!d?.daily) return [];
+    const j = d.daily, p = [];
+    if (d.current) p.push(`En ce moment à Canet, il fait ${deg(d.current.temperature_2m)}, ressenti ${deg(d.current.apparent_temperature)}, avec ${ciel(d.current.weather_code)}.`);
+    p.push(`Aujourd’hui, les températures vont de ${deg(j.temperature_2m_min[0])} à ${deg(j.temperature_2m_max[0])}.`);
+    if (d.hourly) {
+      const auj = j.time[0];
+      const point = (h) => { const i = d.hourly.time.indexOf(`${auj}T${String(h).padStart(2, '0')}:00`); return i < 0 ? null : { c: ciel(d.hourly.weather_code[i]), t: d.hourly.temperature_2m[i] }; };
+      const moments = [['ce matin', 9, 11], ['cet après-midi', 15, 17], ['ce soir', 20, 22]].filter(([, , fin]) => heure <= fin)
+        .map(([nom, h]) => [nom, point(h)]).filter(([, x]) => x);
+      if (moments.length > 1 && moments.every(([, x]) => x.c === moments[0][1].c)) p.push(`${moments[0][1].c[0].toUpperCase() + moments[0][1].c.slice(1)} tout le reste de la journée.`);
+      else if (moments.length) p.push(moments.map(([nom, x]) => `${nom}, ${x.c} et ${deg(x.t)}`).join(' ; ').replace(/^./, (c) => c.toUpperCase()) + '.');
+    }
+    const pluie = j.precipitation_probability_max[0] ?? 0, mm = j.precipitation_sum[0] ?? 0;
+    p.push(pluie >= 40 ? `Risque de pluie : ${pluie} pour cent${mm >= 0.5 ? `, environ ${virgule(mm)} millimètres` : ''}. Prends un parapluie.`
+      : pluie >= 15 ? `Petit risque de pluie, ${pluie} pour cent.` : 'Pas de pluie prévue.');
+    const vent = Math.round(j.wind_speed_10m_max[0]), rafales = Math.round(j.wind_gusts_10m_max[0]);
+    p.push(`Vent jusqu’à ${vent} kilomètres heure, rafales à ${rafales}.` + (rafales >= 60 ? ' Ça va souffler très fort, fais attention.' : rafales >= 40 ? ' Ça va souffler.' : ''));
+    const uv = Math.round(j.uv_index_max[0]);
+    if (uv >= 3) p.push(`Indice UV de ${uv}` + (uv >= 6 ? ', pense à la crème solaire.' : ', niveau modéré.'));
+    if (j.temperature_2m_min[0] <= 5) p.push('Il fait froid, couvre-toi bien.');
+    const lever = j.sunrise[0].slice(11, 16), coucher = j.sunset[0].slice(11, 16);
+    p.push(heure <= Number(lever.slice(0, 2)) ? `Le soleil se lève à ${heureParlee(lever)} et se couche à ${heureParlee(coucher)}.` : `Le soleil se couche à ${heureParlee(coucher)}.`);
+    if (j.time.length > 1) p.push(`Et demain : ${ciel(j.weather_code[1])}, de ${deg(j.temperature_2m_min[1])} à ${deg(j.temperature_2m_max[1])}, ${j.precipitation_probability_max[1] ?? 0} pour cent de risque de pluie.`);
+    return p;
+  }
+
   const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
   const echapper = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-  const commun = { JOURS, JOURS_LONGS, lundi, isoJour, decaler, indexJour, lireIngredient, listeCourses, formatQte, correspond, proposerRepas, recurrenteDue, creneauDuJour, heureCourte, texteCreneau, pauseValide, stockage, uid, echapper };
+  const commun = { JOURS, JOURS_LONGS, lundi, isoJour, decaler, indexJour, lireIngredient, listeCourses, formatQte, correspond, proposerRepas, recurrenteDue, creneauDuJour, heureCourte, texteCreneau, pauseValide, heureParlee, meteoParlee, stockage, uid, echapper };
   if (typeof module !== 'undefined') module.exports = commun;
   else racine.commun = commun;
 })(typeof window !== 'undefined' ? window : globalThis);

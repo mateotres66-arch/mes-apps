@@ -6,39 +6,58 @@
   const sync = () => window.commun.sync;
 
   // ---------- Texte du briefing ----------
-  const CODES = [[[0], 'ensoleillé'], [[1], 'plutôt dégagé'], [[2], 'partiellement nuageux'], [[3], 'couvert'], [[45, 48], 'du brouillard'],
-    [[51, 53, 55, 56, 57], 'de la bruine'], [[61, 63, 65, 66, 67, 80, 81, 82], 'de la pluie'], [[71, 73, 75, 77, 85, 86], 'de la neige'], [[95, 96, 99], 'de l’orage']];
-  const heureParlee = (h) => { const [hh, mm] = h.split(':').map(Number); return `${hh} heure${hh > 1 ? 's' : ''}${mm ? ' ' + mm : ''}`; };
+  const { heureParlee, meteoParlee, creneauDuJour } = window.commun;
+  const boulotParle = (c) => `de ${heureParlee(c.debut)} à ${heureParlee(c.fin)}${c.pause ? `, avec une pause de ${heureParlee(c.pause.debut)} à ${heureParlee(c.pause.fin)}` : ''}`;
+  const rdvParle = (r) => (r.heure ? `${r.texte} à ${heureParlee(r.heure)}` : r.texte);
 
   async function texteBriefing() {
     const n = new Date();
-    const auj = isoJour(n);
+    const auj = isoJour(n), demain = decaler(auj, 1);
     const date = n.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
-    const morceaux = [`Bonjour Mateo ! On est ${date}.`];
+    const salut = n.getHours() < 12 ? 'Bonjour' : n.getHours() < 18 ? 'Bon après-midi' : 'Bonsoir';
+    const morceaux = [`${salut} Mateo ! On est ${date}, il est ${heureParlee(n.toTimeString().slice(0, 5))}.`];
+
+    // Météo
     const d = typeof derniereMeteo !== 'undefined' ? derniereMeteo : null; // défini par matin.js
-    if (d?.daily) {
-      const ciel = (CODES.find(([l]) => l.includes(d.daily.weather_code[0])) || [[], ''])[1];
-      const pluie = d.daily.precipitation_probability_max[0] ?? 0;
-      morceaux.push(`Côté météo à Canet, temps ${ciel}, entre ${Math.round(d.daily.temperature_2m_min[0])} et ${Math.round(d.daily.temperature_2m_max[0])} degrés.`
-        + (pluie >= 40 ? ` Il y a ${pluie} pour cent de risque de pluie, pense à prendre un parapluie.` : pluie > 0 ? ` Normalement, pas de pluie.` : ''));
-      if (d.current) morceaux.push(`En ce moment, il fait ${Math.round(d.current.temperature_2m)} degrés.`);
-    }
+    const meteo = meteoParlee(d, n.getHours());
+    morceaux.push(...(meteo.length ? meteo : ['Je n’ai pas pu récupérer la météo.']));
+
+    // Boulot
     const e = typeof etat !== 'undefined' ? etat : { rdv: [], taches: [] }; // défini par matin.js
-    const boulot = window.commun.creneauDuJour(e.planning, auj);
-    morceaux.push(boulot ? `Niveau boulot, tu travailles de ${heureParlee(boulot.debut)} à ${heureParlee(boulot.fin)}${boulot.pause ? `, avec une pause de ${heureParlee(boulot.pause.debut)} à ${heureParlee(boulot.pause.fin)}` : ''}.` : `Aujourd’hui, pas de boulot, tu es de repos.`);
-    const rdv = (e.rdv || []).filter((r) => r.date === auj).sort((a, b) => (a.heure || '').localeCompare(b.heure || ''));
-    morceaux.push(rdv.length
-      ? `Dans ton agenda : ${rdv.map((r) => (r.heure ? r.texte + ' à ' + heureParlee(r.heure) : r.texte)).join(', puis ')}.`
-      : `Rien de prévu dans ton agenda.`);
+    const boulot = creneauDuJour(e.planning, auj), boulotDemain = creneauDuJour(e.planning, demain);
+    morceaux.push(boulot ? `Côté boulot, tu travailles aujourd’hui ${boulotParle(boulot)}.` : 'Côté boulot, tu es de repos aujourd’hui.');
+    morceaux.push(boulotDemain ? `Demain, tu bosses ${boulotParle(boulotDemain)}.` : 'Demain, repos.');
+
+    // Agenda
+    const tri = (a, b) => (a.date + (a.heure || '')).localeCompare(b.date + (b.heure || ''));
+    const rdv = (e.rdv || []).filter((r) => r.date === auj).sort(tri);
+    const rdvDemain = (e.rdv || []).filter((r) => r.date === demain).sort(tri);
+    const plusTard = (e.rdv || []).filter((r) => r.date > demain && r.date <= decaler(auj, 7)).sort(tri);
+    morceaux.push(rdv.length ? `Dans ton agenda aujourd’hui : ${rdv.map(rdvParle).join(', puis ')}.` : 'Aucun rendez-vous aujourd’hui.');
+    if (rdvDemain.length) morceaux.push(`Demain : ${rdvDemain.map(rdvParle).join(', puis ')}.`);
+    if (plusTard.length) {
+      const p = plusTard[0];
+      const jour = new Date(p.date + 'T12:00').toLocaleDateString('fr-FR', { weekday: 'long' });
+      morceaux.push(plusTard.length === 1 ? `Cette semaine, il y a aussi : ${rdvParle(p)}, ${jour}.` : `Cette semaine, ${plusTard.length} autres rendez-vous, le prochain ${jour} : ${rdvParle(p)}.`);
+    }
+
+    // Tâches
     const taches = (e.taches || []).filter((t) => !t.fait);
-    if (taches.length) morceaux.push(`Il te reste ${taches.length} tâche${taches.length > 1 ? 's' : ''} : ${taches.slice(0, 5).map((t) => t.texte).join(', ')}${taches.length > 5 ? ', et d’autres' : ''}.`);
+    const retard = taches.filter((t) => t.cree < auj).length;
+    if (taches.length) {
+      morceaux.push(`Tu as ${taches.length} tâche${taches.length > 1 ? 's' : ''} à faire : ${taches.slice(0, 6).map((t) => t.texte).join(', ')}${taches.length > 6 ? ', et d’autres encore' : ''}.`);
+      if (retard) morceaux.push(retard === 1 ? 'Une d’elles traîne depuis un moment.' : `${retard} d’entre elles traînent depuis un moment.`);
+    } else morceaux.push('Aucune tâche en attente, tranquille.');
+
+    // Repas
     const r = await stockage.lire('repas');
     const menu = r?.menus?.[lundi(n)] || {};
     const j = JOURS[indexJour(n)];
     const nom = (id) => r?.recettes?.find((x) => x.id === id)?.nom;
     const midi = nom(menu[j + '-midi']), soir = nom(menu[j + '-soir']);
-    if (midi || soir) morceaux.push(`Pour manger, ${[midi && 'à midi c’est ' + midi, soir && 'ce soir ' + soir].filter(Boolean).join(', et ')}.`);
-    morceaux.push('Passe une bonne journée !');
+    morceaux.push(midi || soir ? `Au menu : ${[midi && 'à midi, ' + midi, soir && 'ce soir, ' + soir].filter(Boolean).join(' ; et ')}.` : 'Rien n’est prévu au menu aujourd’hui.');
+
+    morceaux.push('Voilà pour aujourd’hui. Passe une bonne journée !');
     return morceaux.join(' ');
   }
 

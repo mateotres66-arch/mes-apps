@@ -52,6 +52,26 @@ assert.ok(c.pauseValide(coupe));
 assert.ok(!c.pauseValide({ ...coupe, pause: { debut: '14:00', fin: '13:00' } })); // à l'envers
 assert.ok(!c.pauseValide({ ...coupe, pause: { debut: '08:00', fin: '10:00' } })); // hors journée
 
+// Briefing parlé
+assert.strictEqual(c.heureParlee('09:00'), '9 heures');
+assert.strictEqual(c.heureParlee('12:30'), 'midi 30');
+assert.strictEqual(c.heureParlee('01:05'), '1 heure 5');
+const h = (j) => Array.from({ length: 24 }, (_, i) => `2026-11-${j}T${String(i).padStart(2, '0')}:00`);
+const met = {
+  current: { temperature_2m: 11.4, apparent_temperature: 9.6, weather_code: 0 },
+  hourly: { time: [...h(12), ...h(13)], weather_code: Array(48).fill(0).map((_, i) => (i >= 18 ? 61 : 0)), temperature_2m: Array(48).fill(14) },
+  daily: { time: ['2026-11-12', '2026-11-13'], weather_code: [61, 3], temperature_2m_min: [4.2, 8], temperature_2m_max: [17.6, 15],
+    precipitation_probability_max: [70, 10], precipitation_sum: [3.24, 0], wind_speed_10m_max: [25, 10], wind_gusts_10m_max: [52, 20],
+    uv_index_max: [2, 1], sunrise: ['2026-11-12T07:41', '2026-11-13T07:42'], sunset: ['2026-11-12T17:20', '2026-11-13T17:19'] },
+};
+const dit = c.meteoParlee(met, 7).join(' ');
+for (const bout of ['il fait 11 degrés, ressenti 10 degrés, avec grand soleil', 'de 4 degrés à 18 degrés', 'Ce matin, grand soleil et 14 degrés ; cet après-midi, grand soleil et 14 degrés ; ce soir, de la pluie et 14 degrés',
+  '70 pour cent, environ 3,2 millimètres. Prends un parapluie', 'rafales à 52. Ça va souffler.', 'couvre-toi', 'se lève à 7 heures 41 et se couche à 17 heures 20', 'Et demain : ciel couvert, de 8 degrés à 15 degrés, 10 pour cent'])
+  assert.ok(dit.includes(bout), 'manque « ' + bout + ' » dans : ' + dit);
+assert.ok(!dit.includes('UV')); // UV 2 : rien à dire
+assert.ok(!c.meteoParlee(met, 21).join(' ').includes('ce matin')); // le soir, on ne parle plus du matin
+assert.deepStrictEqual(c.meteoParlee(null, 8), []);
+
 // Idées repas
 const { BIBLIOTHEQUE, PLACARD } = require('./src/bibliotheque.js');
 const lib = BIBLIOTHEQUE.map(([nom, portions, ingredients]) => ({ nom, portions, ingredients }));
