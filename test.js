@@ -64,14 +64,11 @@ const met = {
     precipitation_probability_max: [70, 10], precipitation_sum: [3.24, 0], wind_speed_10m_max: [25, 10], wind_gusts_10m_max: [52, 20],
     uv_index_max: [2, 1], sunrise: ['2026-11-12T07:41', '2026-11-13T07:42'], sunset: ['2026-11-12T17:20', '2026-11-13T17:19'] },
 };
-const dit = c.meteoParlee(met, 7).join(' ');
-for (const bout of ['il fait 11 degrés, ressenti 10 degrés, avec grand soleil', 'de 4 degrés à 18 degrés', 'Ce matin, grand soleil et 14 degrés ; cet après-midi, grand soleil et 14 degrés ; ce soir, de la pluie et 14 degrés',
-  '70 pour cent, environ 3,2 millimètres. Prends un parapluie', 'rafales à 52. Ça va souffler.', 'couvre-toi', 'se lève à 7 heures 41 et se couche à 17 heures 20'])
-  assert.ok(dit.includes(bout), 'manque « ' + bout + ' » dans : ' + dit);
-assert.ok(!dit.includes('UV')); // UV 2 : rien à dire
-assert.ok(!/demain/i.test(dit)); // on ne parle que d'aujourd'hui
-assert.ok(!c.meteoParlee(met, 21).join(' ').includes('ce matin')); // le soir, on ne parle plus du matin
-assert.deepStrictEqual(c.meteoParlee(null, 8), []);
+const dit = c.meteoParlee(met).join(' ');
+assert.strictEqual(dit, 'Météo à Canet : de la pluie, de 4 à 18 degrés. Prends un parapluie. Il fait froid, couvre-toi.');
+const beau = { daily: { ...met.daily, weather_code: [0], temperature_2m_min: [12], precipitation_probability_max: [10], wind_gusts_10m_max: [20] } };
+assert.strictEqual(c.meteoParlee(beau).join(' '), 'Météo à Canet : grand soleil, de 12 à 18 degrés.'); // court : rien à conseiller
+assert.deepStrictEqual(c.meteoParlee(null), []);
 
 // Idées repas
 const { BIBLIOTHEQUE, PLACARD } = require('./src/bibliotheque.js');

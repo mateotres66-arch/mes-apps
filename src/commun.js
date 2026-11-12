@@ -146,33 +146,16 @@
     return base + (mm ? ' ' + mm : '');
   }
   const deg = (v) => `${Math.round(v)} degré${Math.abs(Math.round(v)) > 1 ? 's' : ''}`;
-  const virgule = (v) => String(Math.round(v * 10) / 10).replace('.', ',');
 
-  // Météo complète du jour à lire : maintenant, déroulé de la journée, pluie, vent, UV, soleil, conseils.
-  // d : réponse Open-Meteo (current, hourly, daily) ; heure : heure actuelle (0-23).
-  function meteoParlee(d, heure) {
+  // Météo du jour en une phrase, plus un conseil seulement si utile (pluie, grand vent, froid).
+  function meteoParlee(d) {
     if (!d?.daily) return [];
-    const j = d.daily, p = [];
-    if (d.current) p.push(`En ce moment à Canet, il fait ${deg(d.current.temperature_2m)}, ressenti ${deg(d.current.apparent_temperature)}, avec ${ciel(d.current.weather_code)}.`);
-    p.push(`Aujourd’hui, les températures vont de ${deg(j.temperature_2m_min[0])} à ${deg(j.temperature_2m_max[0])}.`);
-    if (d.hourly) {
-      const auj = j.time[0];
-      const point = (h) => { const i = d.hourly.time.indexOf(`${auj}T${String(h).padStart(2, '0')}:00`); return i < 0 ? null : { c: ciel(d.hourly.weather_code[i]), t: d.hourly.temperature_2m[i] }; };
-      const moments = [['ce matin', 9, 11], ['cet après-midi', 15, 17], ['ce soir', 20, 22]].filter(([, , fin]) => heure <= fin)
-        .map(([nom, h]) => [nom, point(h)]).filter(([, x]) => x);
-      if (moments.length > 1 && moments.every(([, x]) => x.c === moments[0][1].c)) p.push(`${moments[0][1].c[0].toUpperCase() + moments[0][1].c.slice(1)} tout le reste de la journée.`);
-      else if (moments.length) p.push(moments.map(([nom, x]) => `${nom}, ${x.c} et ${deg(x.t)}`).join(' ; ').replace(/^./, (c) => c.toUpperCase()) + '.');
-    }
-    const pluie = j.precipitation_probability_max[0] ?? 0, mm = j.precipitation_sum[0] ?? 0;
-    p.push(pluie >= 40 ? `Risque de pluie : ${pluie} pour cent${mm >= 0.5 ? `, environ ${virgule(mm)} millimètres` : ''}. Prends un parapluie.`
-      : pluie >= 15 ? `Petit risque de pluie, ${pluie} pour cent.` : 'Pas de pluie prévue.');
-    const vent = Math.round(j.wind_speed_10m_max[0]), rafales = Math.round(j.wind_gusts_10m_max[0]);
-    p.push(`Vent jusqu’à ${vent} kilomètres heure, rafales à ${rafales}.` + (rafales >= 60 ? ' Ça va souffler très fort, fais attention.' : rafales >= 40 ? ' Ça va souffler.' : ''));
-    const uv = Math.round(j.uv_index_max[0]);
-    if (uv >= 3) p.push(`Indice UV de ${uv}` + (uv >= 6 ? ', pense à la crème solaire.' : ', niveau modéré.'));
-    if (j.temperature_2m_min[0] <= 5) p.push('Il fait froid, couvre-toi bien.');
-    const lever = j.sunrise[0].slice(11, 16), coucher = j.sunset[0].slice(11, 16);
-    p.push(heure <= Number(lever.slice(0, 2)) ? `Le soleil se lève à ${heureParlee(lever)} et se couche à ${heureParlee(coucher)}.` : `Le soleil se couche à ${heureParlee(coucher)}.`);
+    const j = d.daily;
+    const c = ciel(j.weather_code[0]);
+    const p = [`Météo à Canet : ${c}, de ${Math.round(j.temperature_2m_min[0])} à ${deg(j.temperature_2m_max[0])}.`];
+    if ((j.precipitation_probability_max[0] ?? 0) >= 40) p.push('Prends un parapluie.');
+    if (Math.round(j.wind_gusts_10m_max[0]) >= 60) p.push('Gros coup de vent prévu.');
+    else if (j.temperature_2m_min[0] <= 5) p.push('Il fait froid, couvre-toi.');
     return p;
   }
 

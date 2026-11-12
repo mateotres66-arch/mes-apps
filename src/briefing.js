@@ -7,7 +7,7 @@
 
   // ---------- Texte du briefing ----------
   const { heureParlee, meteoParlee, creneauDuJour } = window.commun;
-  const boulotParle = (c) => `de ${heureParlee(c.debut)} à ${heureParlee(c.fin)}${c.pause ? `, avec une pause de ${heureParlee(c.pause.debut)} à ${heureParlee(c.pause.fin)}` : ''}`;
+  const boulotParle = (c) => `de ${heureParlee(c.debut)} à ${heureParlee(c.fin)}${c.pause ? `, pause de ${heureParlee(c.pause.debut)} à ${heureParlee(c.pause.fin)}` : ''}`;
   const rdvParle = (r) => (r.heure ? `${r.texte} à ${heureParlee(r.heure)}` : r.texte);
 
   async function texteBriefing() {
@@ -15,49 +15,32 @@
     const auj = isoJour(n);
     const date = n.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
     const salut = n.getHours() < 12 ? 'Bonjour' : n.getHours() < 18 ? 'Bon après-midi' : 'Bonsoir';
-    const morceaux = [`${salut} Mateo ! On est ${date}, il est ${heureParlee(n.toTimeString().slice(0, 5))}.`];
+    const morceaux = [`${salut} Mateo ! On est ${date}.`];
 
-    // Météo
+    // Météo du jour, courte
     // météo pas encore arrivée (appli tout juste ouverte, ex. depuis la notification) : on l'attend, 6 s maximum
     if (typeof derniereMeteo !== 'undefined' && !derniereMeteo?.daily && typeof meteo === 'function')
       await Promise.race([meteo(), new Promise((ok) => setTimeout(ok, 6000))]);
     const d = typeof derniereMeteo !== 'undefined' ? derniereMeteo : null; // défini par matin.js
-    const phrasesMeteo = meteoParlee(d, n.getHours());
+    const phrasesMeteo = meteoParlee(d);
     morceaux.push(...(phrasesMeteo.length ? phrasesMeteo : ['Je n’ai pas pu récupérer la météo.']));
 
-    // Boulot
+    // Emploi du jour : boulot, rendez-vous, tâches, repas
     const e = typeof etat !== 'undefined' ? etat : { rdv: [], taches: [] }; // défini par matin.js
     const boulot = creneauDuJour(e.planning, auj);
-    morceaux.push(boulot ? `Côté boulot, tu travailles aujourd’hui ${boulotParle(boulot)}.` : 'Côté boulot, tu es de repos aujourd’hui.');
-
-    // Agenda
-    const tri = (a, b) => (a.date + (a.heure || '')).localeCompare(b.date + (b.heure || ''));
-    const rdv = (e.rdv || []).filter((r) => r.date === auj).sort(tri);
-    const plusTard = (e.rdv || []).filter((r) => r.date > auj && r.date <= decaler(auj, 7)).sort(tri);
-    morceaux.push(rdv.length ? `Dans ton agenda aujourd’hui : ${rdv.map(rdvParle).join(', puis ')}.` : 'Aucun rendez-vous aujourd’hui.');
-    if (plusTard.length) {
-      const p = plusTard[0];
-      const jour = new Date(p.date + 'T12:00').toLocaleDateString('fr-FR', { weekday: 'long' });
-      morceaux.push(plusTard.length === 1 ? `Cette semaine, il y a aussi : ${rdvParle(p)}, ${jour}.` : `Cette semaine, ${plusTard.length} autres rendez-vous, le prochain ${jour} : ${rdvParle(p)}.`);
-    }
-
-    // Tâches
+    morceaux.push(boulot ? `Tu travailles ${boulotParle(boulot)}.` : 'Tu es de repos.');
+    const rdv = (e.rdv || []).filter((r) => r.date === auj).sort((a, b) => (a.heure || '').localeCompare(b.heure || ''));
+    if (rdv.length) morceaux.push(`Rendez-vous : ${rdv.map(rdvParle).join(', puis ')}.`);
     const taches = (e.taches || []).filter((t) => !t.fait);
-    const retard = taches.filter((t) => t.cree < auj).length;
-    if (taches.length) {
-      morceaux.push(`Tu as ${taches.length} tâche${taches.length > 1 ? 's' : ''} à faire : ${taches.slice(0, 6).map((t) => t.texte).join(', ')}${taches.length > 6 ? ', et d’autres encore' : ''}.`);
-      if (retard) morceaux.push(retard === 1 ? 'Une d’elles traîne depuis un moment.' : `${retard} d’entre elles traînent depuis un moment.`);
-    } else morceaux.push('Aucune tâche en attente, tranquille.');
-
-    // Repas
+    if (taches.length) morceaux.push(`À faire : ${taches.slice(0, 3).map((t) => t.texte).join(', ')}${taches.length > 3 ? `, et ${taches.length - 3} autre${taches.length > 4 ? 's' : ''}` : ''}.`);
     const r = await stockage.lire('repas');
     const menu = r?.menus?.[lundi(n)] || {};
     const j = JOURS[indexJour(n)];
     const nom = (id) => r?.recettes?.find((x) => x.id === id)?.nom;
     const midi = nom(menu[j + '-midi']), soir = nom(menu[j + '-soir']);
-    morceaux.push(midi || soir ? `Au menu : ${[midi && 'à midi, ' + midi, soir && 'ce soir, ' + soir].filter(Boolean).join(' ; et ')}.` : 'Rien n’est prévu au menu aujourd’hui.');
+    if (midi || soir) morceaux.push(`Au menu : ${[midi && 'à midi, ' + midi, soir && 'le soir, ' + soir].filter(Boolean).join(', et ')}.`);
 
-    morceaux.push('Voilà pour aujourd’hui. Passe une bonne journée !');
+    morceaux.push('Bonne journée !');
     return morceaux.join(' ');
   }
 
