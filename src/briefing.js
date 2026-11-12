@@ -12,29 +12,29 @@
 
   async function texteBriefing() {
     const n = new Date();
-    const auj = isoJour(n), demain = decaler(auj, 1);
+    const auj = isoJour(n);
     const date = n.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
     const salut = n.getHours() < 12 ? 'Bonjour' : n.getHours() < 18 ? 'Bon après-midi' : 'Bonsoir';
     const morceaux = [`${salut} Mateo ! On est ${date}, il est ${heureParlee(n.toTimeString().slice(0, 5))}.`];
 
     // Météo
+    // météo pas encore arrivée (appli tout juste ouverte, ex. depuis la notification) : on l'attend, 6 s maximum
+    if (typeof derniereMeteo !== 'undefined' && !derniereMeteo?.daily && typeof meteo === 'function')
+      await Promise.race([meteo(), new Promise((ok) => setTimeout(ok, 6000))]);
     const d = typeof derniereMeteo !== 'undefined' ? derniereMeteo : null; // défini par matin.js
-    const meteo = meteoParlee(d, n.getHours());
-    morceaux.push(...(meteo.length ? meteo : ['Je n’ai pas pu récupérer la météo.']));
+    const phrasesMeteo = meteoParlee(d, n.getHours());
+    morceaux.push(...(phrasesMeteo.length ? phrasesMeteo : ['Je n’ai pas pu récupérer la météo.']));
 
     // Boulot
     const e = typeof etat !== 'undefined' ? etat : { rdv: [], taches: [] }; // défini par matin.js
-    const boulot = creneauDuJour(e.planning, auj), boulotDemain = creneauDuJour(e.planning, demain);
+    const boulot = creneauDuJour(e.planning, auj);
     morceaux.push(boulot ? `Côté boulot, tu travailles aujourd’hui ${boulotParle(boulot)}.` : 'Côté boulot, tu es de repos aujourd’hui.');
-    morceaux.push(boulotDemain ? `Demain, tu bosses ${boulotParle(boulotDemain)}.` : 'Demain, repos.');
 
     // Agenda
     const tri = (a, b) => (a.date + (a.heure || '')).localeCompare(b.date + (b.heure || ''));
     const rdv = (e.rdv || []).filter((r) => r.date === auj).sort(tri);
-    const rdvDemain = (e.rdv || []).filter((r) => r.date === demain).sort(tri);
-    const plusTard = (e.rdv || []).filter((r) => r.date > demain && r.date <= decaler(auj, 7)).sort(tri);
+    const plusTard = (e.rdv || []).filter((r) => r.date > auj && r.date <= decaler(auj, 7)).sort(tri);
     morceaux.push(rdv.length ? `Dans ton agenda aujourd’hui : ${rdv.map(rdvParle).join(', puis ')}.` : 'Aucun rendez-vous aujourd’hui.');
-    if (rdvDemain.length) morceaux.push(`Demain : ${rdvDemain.map(rdvParle).join(', puis ')}.`);
     if (plusTard.length) {
       const p = plusTard[0];
       const jour = new Date(p.date + 'T12:00').toLocaleDateString('fr-FR', { weekday: 'long' });
@@ -93,6 +93,7 @@
   async function ecouter() {
     if (parle) return arreter();
     parle = true; majBoutonVoix();
+    if ('speechSynthesis' in window) speechSynthesis.speak(new SpeechSynthesisUtterance(' ')); // débloque la voix pendant l'appui (iPhone)
     // lecteur créé pendant l'appui : l'iPhone autorise ensuite la lecture, même après l'attente réseau
     const a = new Audio(SILENCE);
     a.play().catch(() => {});

@@ -148,7 +148,7 @@
   const deg = (v) => `${Math.round(v)} degré${Math.abs(Math.round(v)) > 1 ? 's' : ''}`;
   const virgule = (v) => String(Math.round(v * 10) / 10).replace('.', ',');
 
-  // Météo complète à lire : maintenant, déroulé de la journée, pluie, vent, UV, soleil, conseils, demain.
+  // Météo complète du jour à lire : maintenant, déroulé de la journée, pluie, vent, UV, soleil, conseils.
   // d : réponse Open-Meteo (current, hourly, daily) ; heure : heure actuelle (0-23).
   function meteoParlee(d, heure) {
     if (!d?.daily) return [];
@@ -173,7 +173,6 @@
     if (j.temperature_2m_min[0] <= 5) p.push('Il fait froid, couvre-toi bien.');
     const lever = j.sunrise[0].slice(11, 16), coucher = j.sunset[0].slice(11, 16);
     p.push(heure <= Number(lever.slice(0, 2)) ? `Le soleil se lève à ${heureParlee(lever)} et se couche à ${heureParlee(coucher)}.` : `Le soleil se couche à ${heureParlee(coucher)}.`);
-    if (j.time.length > 1) p.push(`Et demain : ${ciel(j.weather_code[1])}, de ${deg(j.temperature_2m_min[1])} à ${deg(j.temperature_2m_max[1])}, ${j.precipitation_probability_max[1] ?? 0} pour cent de risque de pluie.`);
     return p;
   }
 
