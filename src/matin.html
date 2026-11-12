@@ -7,26 +7,108 @@
 <title>Tableau du matin</title>
 <link rel="stylesheet" href="style.css">
 <style>
-  .page { max-width: 1240px; margin: 0 auto; padding: 28px 28px 40px; }
-  header { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; margin-bottom: 24px; flex-wrap: wrap; }
-  #salut { font-size: 34px; font-weight: 600; }
-  #date { color: var(--doux); font-size: 17px; margin-top: 2px; }
-  #heure { font: 600 56px/1 "Segoe UI Variable Display", "Segoe UI", sans-serif; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
-  .grille { display: grid; grid-template-columns: repeat(12, 1fr); gap: 18px; }
-  .meteo { grid-column: span 5; }
-  .taches { grid-column: span 7; grid-row: span 2; }
-  .repas { grid-column: span 5; }
-  .agenda { grid-column: span 7; }
-  .liens { grid-column: span 5; }
-  .planning { grid-column: span 12; }
-  .semaine { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; }
-  .semaine .js { background: var(--fond); border: 1px solid transparent; border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; }
-  .semaine .js b { font-size: 13px; color: var(--doux); font-weight: 600; }
-  .semaine .js strong { font-size: 17px; font-variant-numeric: tabular-nums; }
-  .semaine .js.repos strong { color: var(--doux); font-weight: 500; font-style: italic; }
-  .semaine .js.auj { border-color: var(--accent); background: var(--accent-doux); }
-  .semaine .js.auj b { color: var(--accent); }
-  @media (max-width: 640px) { .semaine { grid-template-columns: 1fr; } .semaine .js { flex-direction: row; justify-content: space-between; align-items: center; } .semaine .js .h { text-align: right; } }
+  @font-face { font-family: Bricolage; src: url(polices/bricolage-grotesque.woff2) format('woff2'); font-weight: 200 800; font-display: swap; }
+  /* Thème « Nuit » : sombre, tuiles */
+  :root, :root:not(x) { --fond: #0f1115; --carte: #181b22; --carte2: #1f232c; --encre: #f1ede6; --doux: #96928c; --ligne: #272b35;
+    --accent: #ff8a4c; --accent2: #ffb36b; --accent-doux: #2e1d14; --vert: #7fd49a; --rouge: #ff7a68; --bleu: #7fb2ff;
+    --ombre: 0 1px 2px rgba(0,0,0,.3), 0 10px 30px rgba(0,0,0,.25); color-scheme: dark; }
+  body { background: var(--fond); }
+  button { color: #1a0f08; }
+  .titre, #salut, .gros { font-family: Bricolage, "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; }
+  .page { max-width: 1280px; margin: 0 auto; padding: 32px 36px 56px; }
+  header { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 22px; flex-wrap: wrap; }
+  #salut { font-size: 30px; font-weight: 700; letter-spacing: -.02em; }
+  #date { color: var(--doux); margin-top: 2px; }
+  .actions-entete #bouton-voix { border-radius: 14px; }
+  .actions-entete #bouton-reveil { border-radius: 14px; background: var(--carte2); color: var(--encre); border: 1px solid var(--ligne); }
+  .bento { display: grid; grid-template-columns: repeat(12, 1fr); gap: 14px; }
+  .t { background: var(--carte); border: 1px solid var(--ligne); border-radius: 22px; padding: 20px; min-width: 0; position: relative; }
+  .lab { font-size: 12px; text-transform: uppercase; letter-spacing: .1em; color: var(--doux); font-weight: 600; display: flex; justify-content: space-between; align-items: center; gap: 8px; min-height: 26px; }
+  .lab button.discret { text-transform: none; letter-spacing: 0; font-size: 13px; }
+  .t.heure { grid-column: span 4; display: flex; flex-direction: column; justify-content: space-between; gap: 18px; }
+  #heure { font-size: 92px; font-weight: 700; line-height: .9; letter-spacing: -.05em; font-variant-numeric: tabular-nums; }
+  #heure-sous { color: var(--doux); margin-top: 8px; }
+  .t.meteo { grid-column: span 4; background: radial-gradient(120% 90% at 100% 0%, #3a2a1f 0%, var(--carte) 60%); }
+  .m-temp { font-size: 72px; font-weight: 600; line-height: 1; letter-spacing: -.04em; margin-top: 8px; }
+  .m-ico { position: absolute; right: 18px; top: 46px; font-size: 60px; line-height: 1; }
+  .m-mini { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 10px; color: var(--doux); font-size: 13px; }
+  .m-mini b { color: var(--encre); font-weight: 600; }
+  #voir-detail { margin-top: 12px; padding: 6px 0; background: none; color: var(--accent2); font-weight: 600; font-size: 13px; }
+  .t.boulot { grid-column: span 4; }
+  .b-heures { font-size: 34px; font-weight: 600; letter-spacing: -.02em; margin: 10px 0 0; }
+  .b-pause { color: var(--doux); }
+  .prog { position: relative; height: 12px; border-radius: 99px; background: var(--carte2); margin: 18px 0 8px; overflow: hidden; }
+  .prog i { position: absolute; top: 0; bottom: 0; }
+  .prog .fait { left: 0; background: var(--accent); border-radius: 99px; transition: width .6s ease; }
+  .prog .pause { background: repeating-linear-gradient(45deg, #3a3f4b 0 4px, #2a2e37 4px 8px); }
+  .echelle { display: flex; justify-content: space-between; font-size: 12px; color: var(--doux); font-variant-numeric: tabular-nums; }
+  .b-statut { margin-top: 10px; font-size: 13px; color: var(--accent2); font-weight: 600; }
+  .t.journee { grid-column: span 5; grid-row: span 2; }
+  .t.taches { grid-column: span 4; grid-row: span 2; }
+  .t.menu { grid-column: span 3; background: linear-gradient(180deg, #1a2219, var(--carte)); align-self: start; }
+  .t.semaine-t { align-self: end; }
+  .t.semaine-t { grid-column: span 3; }
+  .t.liens { grid-column: span 12; }
+  .jl { list-style: none; margin: 8px 0 0; padding: 0; }
+  .jl li { display: grid; grid-template-columns: 54px 4px 1fr auto; gap: 12px; align-items: center; padding: 11px 0; border-bottom: 1px solid var(--ligne); }
+  .jl li:last-child { border-bottom: 0; }
+  .jl .h { font-weight: 600; font-variant-numeric: tabular-nums; }
+  .jl .b { height: 34px; border-radius: 4px; background: var(--doux); }
+  .jl .boulot .b { background: var(--accent); } .jl .repas .b { background: var(--vert); } .jl .rdv .b { background: var(--bleu); } .jl .pause .b { background: #3a3f4b; }
+  .jl b { font-weight: 600; overflow-wrap: anywhere; } .jl p { margin: 0; color: var(--doux); font-size: 13px; }
+  .jl .passe { opacity: .45; }
+  .jl .plus-tard { font-size: 12px; text-transform: uppercase; letter-spacing: .1em; color: var(--doux); font-weight: 600; display: block; padding: 16px 0 4px; border: 0; }
+  .vide { color: var(--doux); font-style: normal; }
+  details > summary { cursor: pointer; color: var(--doux); font-size: 14px; margin-top: 12px; list-style: none; padding: 10px 12px; border-radius: 12px; background: var(--carte2); }
+  details > summary::-webkit-details-marker { display: none; }
+  details[open] > summary { margin-bottom: 10px; }
+  #form-rdv { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  #form-rdv #rdv-texte { grid-column: span 2; }
+  #form-rdv button { grid-column: span 2; }
+  input, select { background: var(--carte2); }
+  #liste-taches li { gap: 12px; padding: 10px 0; }
+  #liste-taches input[type=checkbox] { appearance: none; width: 22px; height: 22px; border-radius: 50%; border: 2px solid #4a4f5c; margin: 0; cursor: pointer; display: grid; place-content: center; }
+  #liste-taches input[type=checkbox]:checked { background: var(--vert); border-color: var(--vert); }
+  #liste-taches input[type=checkbox]:checked::after { content: "✓"; color: #0f1115; font-size: 13px; font-weight: 800; }
+  .tache.faite label { text-decoration: line-through; color: var(--doux); }
+  .tache label { flex: 1; cursor: pointer; overflow-wrap: anywhere; }
+  .retard { font-size: 11px; font-weight: 700; color: var(--accent); background: var(--accent-doux); padding: 3px 8px; border-radius: 99px; white-space: nowrap; }
+  #form-tache { flex-wrap: wrap; } #form-tache input { flex: 1 1 140px; } #form-tache select { flex: 1 1 120px; }
+  .plat { margin-top: 12px; } .plat small { color: var(--doux); display: block; font-size: 12px; } .plat b { font: 600 18px Bricolage, system-ui, sans-serif; }
+  .plat .vide { font-size: 15px; }
+  #semaine { width: 100%; background: none; padding: 0; display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-top: 14px; align-items: end; height: 70px; border-radius: 0; }
+  #semaine span { display: block; border-radius: 6px; background: var(--carte2); min-height: 8px; transition: height .5s ease; }
+  #semaine .on { background: #4a3324; } #semaine .auj { background: var(--accent); } #semaine .auj.off { background: #5a5f6b; }
+  #semaine:hover span.on { background: #5c3f2c; }
+  .semj { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: 11px; color: var(--doux); margin-top: 6px; }
+  .semj .auj { color: var(--accent); font-weight: 700; }
+  .liens-rang { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 8px; }
+  .lien { position: relative; }
+  .lien button.ouvrir { background: var(--carte2); color: var(--encre); border: 1px solid var(--ligne); font-weight: 500; padding: 10px 16px; border-radius: 12px; }
+  .lien button.ouvrir:hover { border-color: var(--accent); }
+  .lien .suppr { position: absolute; top: -8px; right: -8px; opacity: 0; background: var(--carte); border: 1px solid var(--ligne); border-radius: 99px; padding: 0 6px; font-size: 12px; }
+  .lien:hover .suppr, .lien:focus-within .suppr { opacity: 1; }
+  #erreur-lien { color: var(--rouge); font-size: 13px; min-height: 1em; margin-top: 6px; }
+  .liens details { max-width: 520px; }
+  @media (prefers-reduced-motion: no-preference) {
+    .bento > .apparait:nth-child(2) { animation-delay: .04s; } .bento > .apparait:nth-child(3) { animation-delay: .08s; }
+    .bento > .apparait:nth-child(4) { animation-delay: .12s; } .bento > .apparait:nth-child(5) { animation-delay: .16s; }
+    .bento > .apparait:nth-child(6) { animation-delay: .2s; } .bento > .apparait:nth-child(7) { animation-delay: .24s; } .bento > .apparait:nth-child(8) { animation-delay: .28s; }
+  }
+  @media (max-width: 1100px) { .t.heure, .t.meteo { grid-column: span 6; } .t.boulot { grid-column: span 12; } .t.journee { grid-column: span 7; } .t.taches { grid-column: span 5; } .t.menu, .t.semaine-t { grid-column: span 6; } .t.journee, .t.taches { grid-row: auto; } }
+  @media (max-width: 760px) {
+    .page { padding: 20px 14px 72px; }
+    header { flex-direction: column; align-items: stretch; } .actions-entete { display: grid !important; grid-template-columns: 1fr 1fr; }
+    #salut { font-size: 26px; }
+    .actions-entete button { font-size: 14px !important; padding: 12px 10px !important; white-space: nowrap; }
+    .bento { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .t { padding: 16px; border-radius: 20px; }
+    .t.heure, .t.meteo, .t.menu, .t.semaine-t { grid-column: span 1; }
+    .t.boulot, .t.journee, .t.taches, .t.liens { grid-column: span 2; }
+    #heure { font-size: 52px; } .m-temp { font-size: 46px; } .m-ico { font-size: 34px; top: 14px; right: 12px; }
+    .m-mini { display: none; } #voir-detail { margin-top: 6px; }
+    .plat b { font-size: 15px; }
+  }
   #fen-planning { width: min(480px, calc(100vw - 32px)); max-height: calc(100vh - 32px); border: 1px solid var(--ligne); border-radius: 16px; background: var(--carte); color: var(--encre); padding: 22px; box-shadow: var(--ombre); }
   #fen-planning::backdrop { background: rgba(10, 10, 14, .55); }
   #fen-planning .jour-p { padding: 8px 0; border-bottom: 1px solid var(--ligne); display: grid; gap: 6px; }
@@ -36,38 +118,9 @@
   #fen-planning .rang.pause label { font-weight: 400; font-size: 13px; color: var(--doux); padding-left: 28px; text-transform: none; }
   #fen-planning .rang.pause:has(input:disabled:first-child) { display: none; }
   #planning-msg { color: var(--rouge); font-size: 13px; min-height: 1em; margin-top: 8px; }
-  .semaine .js small { font-size: 12px; color: var(--doux); }
-  .semaine .js .h { display: flex; flex-direction: column; }
   #fen-planning input:disabled { opacity: .35; }
   #fen-planning .act { display: flex; gap: 8px; margin-top: 8px; position: sticky; bottom: -22px; background: var(--carte); padding: 12px 0 22px; margin-bottom: -22px; }
   @media (max-width: 400px) { #fen-planning .rang { grid-template-columns: 1fr 1fr; } #fen-planning .rang label { grid-column: span 2; } }
-  @media (max-width: 980px) { .grille > * { grid-column: span 12 !important; grid-row: auto !important; } }
-  .meteo-now { display: flex; align-items: center; gap: 18px; }
-  .meteo-icone { font-size: 54px; line-height: 1; }
-  .meteo-temp { font-size: 46px; font-weight: 600; line-height: 1; }
-  .jours { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 18px; }
-  .jour { text-align: center; padding: 10px 4px; border-radius: 12px; background: var(--fond); }
-  .jour b { display: block; font-size: 13px; color: var(--doux); font-weight: 600; }
-  .jour span { font-size: 24px; display: block; margin: 4px 0; }
-  .tache.faite label { text-decoration: line-through; color: var(--doux); }
-  .tache label { flex: 1; cursor: pointer; overflow-wrap: anywhere; }
-  .retard { color: var(--rouge); font-size: 12px; font-weight: 600; }
-  .compte { font-size: 13px; color: var(--accent); text-transform: none; letter-spacing: 0; }
-  .plat { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--ligne); }
-  .plat:last-child { border-bottom: 0; }
-  .plat b { font-weight: 600; }
-  .rdv-quand { min-width: 112px; font-variant-numeric: tabular-nums; color: var(--doux); font-size: 13px; }
-  .rdv-quand.aujourdhui { color: var(--accent); font-weight: 600; }
-  .agenda form { display: grid; grid-template-columns: 150px 110px 1fr auto; gap: 8px; margin-top: 12px; }
-  @media (max-width: 640px) { .agenda form { grid-template-columns: 1fr 1fr; } }
-  .boutons-liens { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
-  .lien { position: relative; }
-  .lien button.ouvrir { width: 100%; text-align: left; background: var(--fond); color: var(--encre); border: 1px solid var(--ligne); font-weight: 500; padding: 12px; }
-  .lien button.ouvrir:hover { border-color: var(--accent); }
-  .lien .suppr { position: absolute; top: 2px; right: 2px; opacity: 0; }
-  .lien:hover .suppr, .lien:focus-within .suppr { opacity: 1; }
-  details summary { cursor: pointer; color: var(--doux); font-size: 13px; margin-top: 12px; }
-  :root { --bleu: #3b82c4; }
   dialog { width: min(1100px, calc(100vw - 48px)); max-height: calc(100vh - 48px); border: 1px solid var(--ligne); border-radius: 18px; background: var(--carte); color: var(--encre); padding: 22px 26px 26px; box-shadow: var(--ombre); }
   dialog::backdrop { background: rgba(10, 10, 14, .55); }
   .dm-barre { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
@@ -99,20 +152,43 @@
 <div class="page">
   <header>
     <div>
-      <h1 id="salut">Bonjour</h1>
+      <h1 id="salut">Bonjour Mateo</h1>
       <div id="date"></div>
     </div>
-    <div id="heure" aria-live="off"></div>
   </header>
 
-  <div class="grille">
-    <section class="carte meteo apparait" aria-labelledby="t-meteo">
-      <h2 id="t-meteo">Météo · Canet-en-Roussillon <button class="discret" id="maj-meteo" title="Actualiser">↻</button></h2>
+  <div class="bento">
+    <section class="t heure apparait" aria-label="Heure">
+      <div class="lab">Maintenant</div>
+      <div><div id="heure" aria-live="off"></div><div id="heure-sous"></div></div>
+    </section>
+
+    <section class="t meteo apparait" aria-labelledby="t-meteo">
+      <div class="lab"><span id="t-meteo">Canet</span><button class="discret" id="maj-meteo" title="Actualiser" aria-label="Actualiser la météo">↻</button></div>
       <div id="meteo"><p class="vide">Chargement…</p></div>
     </section>
 
-    <section class="carte taches apparait" aria-labelledby="t-taches">
-      <h2 id="t-taches">À faire <span class="compte" id="compte"></span></h2>
+    <section class="t boulot apparait" aria-labelledby="t-boulot">
+      <div class="lab"><span id="t-boulot">Boulot</span><button type="button" class="discret" id="modif-planning">✏️ Modifier</button></div>
+      <div id="boulot"></div>
+    </section>
+
+    <section class="t journee apparait" aria-labelledby="t-journee">
+      <div class="lab"><span id="t-journee">Ta journée</span><span id="nb-journee"></span></div>
+      <ul class="jl" id="liste-rdv"></ul>
+      <details id="ajout-rdv">
+        <summary>+ Ajouter un rendez-vous</summary>
+        <form id="form-rdv">
+          <input type="date" id="rdv-date" aria-label="Date" required>
+          <input type="time" id="rdv-heure" aria-label="Heure">
+          <input id="rdv-texte" placeholder="Rendez-vous, rappel…" aria-label="Description" maxlength="200" required>
+          <button>Ajouter</button>
+        </form>
+      </details>
+    </section>
+
+    <section class="t taches apparait" aria-labelledby="t-taches">
+      <div class="lab"><span id="t-taches">À faire</span><span id="compte"></span></div>
       <ul class="liste" id="liste-taches"></ul>
       <form class="ligne-form" id="form-tache">
         <input id="nouvelle-tache" placeholder="Ajouter une tâche…" aria-label="Nouvelle tâche" maxlength="200" required>
@@ -131,40 +207,29 @@
       </details>
     </section>
 
-    <section class="carte repas apparait" aria-labelledby="t-repas">
-      <h2 id="t-repas">Au menu aujourd'hui</h2>
+    <section class="t menu apparait" aria-labelledby="t-menu">
+      <div class="lab"><span id="t-menu">Menu</span></div>
       <div id="repas-jour"></div>
     </section>
 
-    <section class="carte agenda apparait" aria-labelledby="t-agenda">
-      <h2 id="t-agenda">Rendez-vous · 7 prochains jours</h2>
-      <ul class="liste" id="liste-rdv"></ul>
-      <form id="form-rdv">
-        <input type="date" id="rdv-date" aria-label="Date" required>
-        <input type="time" id="rdv-heure" aria-label="Heure">
-        <input id="rdv-texte" placeholder="Rendez-vous, rappel…" aria-label="Description" maxlength="200" required>
-        <button>Ajouter</button>
-      </form>
+    <section class="t semaine-t apparait" aria-labelledby="t-semaine">
+      <div class="lab"><span id="t-semaine">Semaine</span><span id="planning-auj"></span></div>
+      <button type="button" id="semaine" aria-label="Modifier mon planning de travail"></button>
+      <div class="semj" id="semaine-jours"></div>
     </section>
 
-    <section class="carte liens apparait" aria-labelledby="t-liens">
-      <h2 id="t-liens">Raccourcis</h2>
-      <div class="boutons-liens" id="liens"></div>
+    <section class="t liens apparait" aria-labelledby="t-liens">
+      <div class="lab"><span id="t-liens">Raccourcis</span></div>
+      <div class="liens-rang" id="liens"></div>
       <div id="erreur-lien" role="status"></div>
       <details>
-        <summary>Ajouter un raccourci</summary>
+        <summary>+ Ajouter un raccourci</summary>
         <form class="ligne-form" id="form-lien">
           <input id="lien-nom" placeholder="Nom" aria-label="Nom du raccourci" style="flex:.6" required>
           <input id="lien-cible" placeholder="https://… ou C:\chemin" aria-label="Lien ou chemin" required>
           <button>OK</button>
         </form>
       </details>
-    </section>
-
-    <section class="carte planning apparait" aria-labelledby="t-planning">
-      <h2 id="t-planning">Mon planning <span class="compte" id="planning-auj"></span></h2>
-      <div class="semaine" id="semaine"></div>
-      <button type="button" class="contour" id="modif-planning" style="width:100%;margin-top:12px">✏️ Modifier mes jours de travail</button>
     </section>
   </div>
 </div>

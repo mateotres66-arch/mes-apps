@@ -17,14 +17,17 @@ let jourAffiche = '';
 const enregistrer = () => stockage.ecrire('matin', etat);
 
 // ---------- Horloge ----------
+let derniereMinute = -1;
 function horloge() {
   const n = new Date();
-  $('heure').textContent = n.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  $('heure').textContent = n.toLocaleTimeString('fr-FR', { hour: 'numeric', minute: '2-digit' }).replace(/^0/, '');
   const h = n.getHours();
-  $('salut').textContent = h < 5 ? 'Bonne nuit, Mateo' : h < 12 ? 'Bonjour, Mateo' : h < 18 ? 'Bon après-midi, Mateo' : 'Bonsoir, Mateo';
-  const d = n.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  $('salut').textContent = h < 5 ? 'Bonne nuit Mateo' : h < 12 ? 'Bonjour Mateo' : h < 18 ? 'Bon après-midi Mateo' : 'Bonsoir Mateo';
+  const d = n.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
   $('date').textContent = d.charAt(0).toUpperCase() + d.slice(1);
   if (isoJour(n) !== jourAffiche) { jourAffiche = isoJour(n); toutAfficher(); }
+  else if (n.getMinutes() !== derniereMinute) { afficherBoulot(); afficherJournee(); afficherSoleil(); }
+  derniereMinute = n.getMinutes();
 }
 
 // ---------- Météo (Open-Meteo, sans clé) ----------
@@ -58,24 +61,27 @@ let derniereMeteo = null;
 function afficherMeteo(d, depuis) {
   derniereMeteo = d;
   const [, icone, texte] = code(d.current.weather_code);
-  const jours = d.daily.time.slice(0, 4).map((t, i) => {
-    const [, ic] = code(d.daily.weather_code[i]);
-    const nomJour = i === 0 ? "Auj." : new Date(t + 'T12:00').toLocaleDateString('fr-FR', { weekday: 'short' });
-    return `<div class="jour"><b>${nomJour}</b><span>${ic}</span>${Math.round(d.daily.temperature_2m_max[i])}° <span class="petit" style="display:inline;font-size:13px">${Math.round(d.daily.temperature_2m_min[i])}°</span>
-      <div class="petit">💧 ${d.daily.precipitation_probability_max[i] ?? 0}%</div></div>`;
-  }).join('');
+  const j = d.daily;
+  const [, icDemain] = code(j.weather_code[1]);
   $('meteo').innerHTML = `
-    <div class="meteo-now">
-      <div class="meteo-icone" aria-hidden="true">${icone}</div>
-      <div>
-        <div class="meteo-temp">${Math.round(d.current.temperature_2m)}°</div>
-        <div>${texte} · ressenti ${Math.round(d.current.apparent_temperature)}°</div>
-        <div class="petit">Vent ${Math.round(d.current.wind_speed_10m)} km/h${depuis ? ' · hors ligne, données de ' + depuis.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : ''}</div>
-      </div>
-    </div>
-    <div class="jours">${jours}</div>
-    <button class="contour" id="voir-detail" style="width:100%;margin-top:14px">Voir la météo en détail</button>`;
+    <div class="m-temp gros">${Math.round(d.current.temperature_2m)}°</div>
+    <div class="m-ico" aria-hidden="true">${icone}</div>
+    <div>${texte} · ${Math.round(j.temperature_2m_min[0])}° → ${Math.round(j.temperature_2m_max[0])}°</div>
+    <div class="m-mini"><span>💧 <b>${j.precipitation_probability_max[0] ?? 0} %</b></span><span>💨 <b>${Math.round(d.current.wind_speed_10m)} km/h</b></span>
+      ${j.time.length > 1 ? `<span>Demain <b>${icDemain} ${Math.round(j.temperature_2m_max[1])}°</b></span>` : ''}</div>
+    ${depuis ? `<div class="petit">Hors ligne · données de ${depuis.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</div>` : ''}
+    <button type="button" id="voir-detail">Voir le détail →</button>`;
+  afficherSoleil();
   if ($('detail-meteo').open) detailMeteo();
+}
+// sous l'heure : prochain lever ou coucher du soleil
+function afficherSoleil() {
+  const j = derniereMeteo?.daily;
+  if (!j?.sunrise) return;
+  const maint = new Date().toTimeString().slice(0, 5);
+  const lever = j.sunrise[0].slice(11, 16), coucher = j.sunset[0].slice(11, 16);
+  $('heure-sous').textContent = maint < lever ? `Lever du soleil ${lever.replace(/^0/, '')}`
+    : maint < coucher ? `Coucher du soleil ${coucher}` : j.sunrise[1] ? `Lever demain ${j.sunrise[1].slice(11, 16).replace(/^0/, '')}` : '';
 }
 
 // ---------- Météo détaillée ----------
@@ -190,14 +196,14 @@ function afficherTaches() {
   etat.taches = etat.taches.filter((t) => !(t.fait && t.faitLe && t.faitLe < auj));
   const ul = $('liste-taches');
   const restantes = etat.taches.filter((t) => !t.fait).length;
-  $('compte').textContent = etat.taches.length ? `${restantes} restante${restantes > 1 ? 's' : ''}` : '';
+  $('compte').textContent = etat.taches.length ? `${etat.taches.length - restantes} / ${etat.taches.length}` : '';
   if (!etat.taches.length) { ul.innerHTML = '<li class="vide">Rien à faire. Profite !</li>'; return; }
   const triees = [...etat.taches].sort((a, b) => a.fait - b.fait || a.cree.localeCompare(b.cree));
   ul.innerHTML = triees.map((t) => `
     <li class="tache ${t.fait ? 'faite' : ''}" data-id="${t.id}">
       <input type="checkbox" id="t-${t.id}" ${t.fait ? 'checked' : ''}>
       <label for="t-${t.id}">${echapper(t.texte)}</label>
-      ${!t.fait && t.cree < auj ? '<span class="retard">depuis ' + new Date(t.cree + 'T12:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) + '</span>' : ''}
+      ${!t.fait && t.cree < auj ? '<span class="retard" title="Depuis le ' + new Date(t.cree + 'T12:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' }) + '">en retard</span>' : ''}
       <button class="discret suppr" aria-label="Supprimer">✕</button>
     </li>`).join('');
 }
@@ -223,20 +229,39 @@ $('form-tache').addEventListener('submit', (e) => {
   enregistrer(); afficherTaches();
 });
 
-// ---------- Rendez-vous ----------
-function afficherRdv() {
+// ---------- Ta journée : boulot, pause, repas et rendez-vous dans l'ordre des heures ----------
+let repasDuJour = { midi: null, soir: null };
+const heureAff = (h) => h.replace(/^0/, '');
+function afficherJournee() {
   const auj = isoJour(new Date());
+  const maint = new Date().toTimeString().slice(0, 5);
   const fin = window.commun.decaler(auj, 7);
   etat.rdv = etat.rdv.filter((r) => r.date >= auj); // les rendez-vous passés sont supprimés
-  const proches = etat.rdv.filter((r) => r.date <= fin).sort((a, b) => (a.date + (a.heure || '')).localeCompare(b.date + (b.heure || '')));
-  const plusTard = etat.rdv.length - proches.length;
-  $('liste-rdv').innerHTML = (proches.length ? proches.map((r) => {
-    const quand = r.date === auj ? "Aujourd'hui" : new Date(r.date + 'T12:00').toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' });
-    return `<li data-id="${r.id}"><span class="rdv-quand ${r.date === auj ? 'aujourdhui' : ''}">${quand}${r.heure ? ' · ' + r.heure : ''}</span>
-      <span style="flex:1;overflow-wrap:anywhere">${echapper(r.texte)}</span><button class="discret suppr" aria-label="Supprimer">✕</button></li>`;
-  }).join('') : '<li class="vide">Aucun rendez-vous cette semaine.</li>')
-    + (plusTard ? `<li class="petit">+ ${plusTard} plus tard</li>` : '');
+  const c = window.commun.creneauDuJour(etat.planning, auj);
+  const ev = [];
+  if (c) {
+    ev.push({ h: c.debut, fin: c.pause?.debut || c.fin, type: 'boulot', titre: 'Boulot', sous: `jusqu’à ${heureCourte(c.fin)}` });
+    if (c.pause) ev.push({ h: c.pause.debut, fin: c.pause.fin, type: 'pause', titre: 'Pause', sous: `jusqu’à ${heureCourte(c.pause.fin)}` },
+      { h: c.pause.fin, fin: c.fin, type: 'boulot', titre: 'Reprise', sous: `fin à ${heureCourte(c.fin)}` });
+  }
+  if (repasDuJour.midi) ev.push({ h: c?.pause?.debut || '12:30', type: 'repas', titre: repasDuJour.midi, sous: 'déjeuner' });
+  if (repasDuJour.soir) ev.push({ h: '19:30', type: 'repas', titre: repasDuJour.soir, sous: 'dîner' });
+  for (const r of etat.rdv.filter((x) => x.date === auj)) ev.push({ h: r.heure || '', type: 'rdv', titre: r.texte, sous: 'rendez-vous', id: r.id });
+  ev.sort((a, b) => (a.h || '00:00').localeCompare(b.h || '00:00'));
+  const ligne = (e) => `<li class="${e.type} ${e.h && (e.fin || e.h) < maint ? 'passe' : ''}" ${e.id ? `data-id="${e.id}"` : ''}>
+    <span class="h">${e.h ? heureAff(e.h) : '—'}</span><span class="b"></span>
+    <div><b>${echapper(e.titre)}</b><p>${e.sous}</p></div>
+    ${e.id ? '<button class="discret suppr" aria-label="Supprimer ce rendez-vous">✕</button>' : '<span></span>'}</li>`;
+  const plusTard = etat.rdv.filter((r) => r.date > auj && r.date <= fin).sort((a, b) => (a.date + (a.heure || '')).localeCompare(b.date + (b.heure || '')));
+  $('nb-journee').textContent = ev.length || '';
+  $('liste-rdv').innerHTML = (ev.length ? ev.map(ligne).join('') : '<li class="vide" style="display:block">Rien de prévu. Journée libre.</li>')
+    + (plusTard.length ? '<li class="plus-tard">Cette semaine</li>' + plusTard.map((r) => {
+      const jour = new Date(r.date + 'T12:00').toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric' });
+      return `<li class="rdv" data-id="${r.id}"><span class="h" style="font-weight:500;color:var(--doux)">${jour}</span><span class="b"></span>
+        <div><b>${echapper(r.texte)}</b><p>${r.heure ? heureAff(r.heure) : 'rendez-vous'}</p></div><button class="discret suppr" aria-label="Supprimer ce rendez-vous">✕</button></li>`;
+    }).join('') : '');
 }
+const afficherRdv = afficherJournee;
 $('liste-rdv').addEventListener('click', (e) => {
   const li = e.target.closest('li[data-id]');
   if (!li || !e.target.matches('.suppr')) return;
@@ -256,27 +281,67 @@ async function afficherRepas() {
   const n = new Date();
   const menu = r?.menus?.[lundi(n)] || {};
   const j = JOURS[indexJour(n)];
-  const nomPlat = (id) => r?.recettes?.find((x) => x.id === id)?.nom;
-  const lignes = [['Midi', menu[j + '-midi']], ['Soir', menu[j + '-soir']]]
-    .map(([moment, id]) => `<div class="plat"><span class="petit">${moment}</span><b>${id ? echapper(nomPlat(id) || '—') : '<span class="vide">Pas prévu</span>'}</b></div>`).join('');
-  $('repas-jour').innerHTML = lignes + '<p class="petit" style="margin:12px 0 0">Prévois la semaine dans l’app « Repas &amp; courses ».</p>';
+  const nomPlat = (id) => (id ? r?.recettes?.find((x) => x.id === id)?.nom || null : null);
+  repasDuJour = { midi: nomPlat(menu[j + '-midi']), soir: nomPlat(menu[j + '-soir']) };
+  const plat = (moment, nom) => `<div class="plat"><small>${moment}</small>${nom ? `<b>${echapper(nom)}</b>` : '<span class="vide">Pas prévu</span>'}</div>`;
+  $('repas-jour').innerHTML = plat('Midi', repasDuJour.midi) + plat('Soir', repasDuJour.soir);
+  afficherJournee();
 }
 
 // ---------- Planning de travail (récurrent, chaque semaine) ----------
 const { creneauDuJour, heureCourte, texteCreneau, pauseValide } = window.commun;
 const plage = (c) => `${heureCourte(c.debut)} – ${heureCourte(c.fin)}`;
+
+const minutes = (h) => { const [a, b] = h.split(':').map(Number); return a * 60 + b; };
+const duree = (m) => `${Math.floor(m / 60)} h${m % 60 ? ' ' + String(m % 60).padStart(2, '0') : ''}`;
+const minutesTravail = (c) => minutes(c.fin) - minutes(c.debut) - (c.pause ? minutes(c.pause.fin) - minutes(c.pause.debut) : 0);
+function afficherBoulot() {
+  const n = new Date();
+  const auj = isoJour(n);
+  const c = creneauDuJour(etat.planning, auj);
+  if (!c) {
+    // prochain jour travaillé
+    let prochain = null;
+    for (let i = 1; i <= 7 && !prochain; i++) { const iso = window.commun.decaler(auj, i); const x = creneauDuJour(etat.planning, iso); if (x) prochain = [iso, x]; }
+    $('boulot').innerHTML = `<div class="b-heures gros">Repos</div><div class="b-pause">Profite de ta journée</div>
+      ${prochain ? `<div class="b-statut">Prochain : ${new Date(prochain[0] + 'T12:00').toLocaleDateString('fr-FR', { weekday: 'long' })} à ${heureCourte(prochain[1].debut)}</div>` : ''}`;
+    return;
+  }
+  const m = n.getHours() * 60 + n.getMinutes();
+  const d = minutes(c.debut), f = minutes(c.fin), total = f - d;
+  const pct = (x) => Math.max(0, Math.min(100, ((x - d) / total) * 100));
+  let statut;
+  if (m < d) statut = `Tu commences dans ${duree(d - m)}`;
+  else if (m >= f) statut = 'Journée terminée, bravo';
+  else if (c.pause && m >= minutes(c.pause.debut) && m < minutes(c.pause.fin)) statut = `En pause jusqu’à ${heureCourte(c.pause.fin)}`;
+  else statut = `En cours · fin dans ${duree(f - m)}`;
+  const milieu = c.pause ? c.pause.debut : `${String(Math.floor((d + total / 2) / 60)).padStart(2, '0')}:${String(Math.round((d + total / 2) % 60)).padStart(2, '0')}`;
+  $('boulot').innerHTML = `<div class="b-heures gros">${plage(c)}</div>
+    <div class="b-pause">${c.pause ? `pause ${heureCourte(c.pause.debut)} – ${heureCourte(c.pause.fin)}` : `${duree(minutesTravail(c))} de travail`}</div>
+    <div class="prog" role="progressbar" aria-label="Avancement de la journée de travail" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(pct(m))}">
+      ${c.pause ? `<i class="pause" style="left:${pct(minutes(c.pause.debut))}%;width:${pct(minutes(c.pause.fin)) - pct(minutes(c.pause.debut))}%"></i>` : ''}
+      <i class="fait" style="width:${pct(m)}%"></i></div>
+    <div class="echelle"><span>${heureCourte(c.debut)}</span><span>${heureCourte(milieu)}</span><span>${heureCourte(c.fin)}</span></div>
+    <div class="b-statut">${statut}</div>`;
+}
 function afficherPlanning() {
   const auj = isoJour(new Date());
   const debutSem = lundi(new Date());
-  $('semaine').innerHTML = NOMS_JOURS.map((nom, i) => {
+  let total = 0;
+  const jours = NOMS_JOURS.map((nom, i) => {
     const iso = window.commun.decaler(debutSem, i);
     const c = creneauDuJour(etat.planning, iso);
-    const date = new Date(iso + 'T12:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
-    return `<div class="js ${c ? '' : 'repos'} ${iso === auj ? 'auj' : ''}"><b>${nom[0].toUpperCase() + nom.slice(1)} ${date}</b><span class="h"><strong>${c ? plage(c) : 'Repos'}</strong>${c?.pause ? `<small>pause ${heureCourte(c.pause.debut)} – ${heureCourte(c.pause.fin)}</small>` : ''}</span></div>`;
-  }).join('');
-  const c = creneauDuJour(etat.planning, auj);
-  $('planning-auj').textContent = c ? `Aujourd'hui : boulot ${texteCreneau(c)}` : "Aujourd'hui : repos";
+    const mt = c ? minutesTravail(c) : 0;
+    total += mt;
+    return { nom, iso, c, mt };
+  });
+  $('semaine').innerHTML = jours.map((j) => `<span class="${j.c ? 'on' : ''} ${j.iso === auj ? 'auj' : ''} ${j.c ? '' : 'off'}" style="height:${j.c ? Math.max(25, Math.min(100, (j.mt / 600) * 100)) : 12}%"
+    title="${j.nom} : ${j.c ? texteCreneau(j.c) : 'repos'}"></span>`).join('');
+  $('semaine-jours').innerHTML = jours.map((j) => `<span class="${j.iso === auj ? 'auj' : ''}">${j.nom[0].toUpperCase()}</span>`).join('');
+  $('planning-auj').textContent = total ? duree(total) : '';
+  afficherBoulot();
 }
+$('semaine').addEventListener('click', () => $('modif-planning').click());
 // Fenêtre de réglage : rien n'est changé avant « Enregistrer »
 $('modif-planning').addEventListener('click', () => {
   $('planning-msg').textContent = '';

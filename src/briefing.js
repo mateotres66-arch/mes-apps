@@ -113,7 +113,7 @@
   const boite = document.createElement('div');
   boite.className = 'actions-entete';
   boite.innerHTML = `<button id="bouton-voix" type="button">🔊 Écouter mon briefing</button><button id="bouton-reveil" type="button" class="contour">⏰ Réveil &amp; notifs</button>`;
-  entete.insertBefore(boite, $('heure'));
+  entete.appendChild(boite);
   const majBoutonVoix = () => { if ($('bouton-voix')) $('bouton-voix').textContent = parle ? '⏹ Arrêter' : '🔊 Écouter mon briefing'; };
   $('bouton-voix').onclick = ecouter;
 
