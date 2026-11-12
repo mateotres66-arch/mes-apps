@@ -2,7 +2,7 @@
 
 Deux applications de bureau (Electron) :
 
-- **Tableau du matin** : heure, météo de Canet-en-Roussillon (Open-Meteo), tâches, rendez-vous des 7 prochains jours, repas du jour, raccourcis.
+- **Tableau du matin** : heure, météo de Canet-en-Roussillon (Open-Meteo), planning de travail de la semaine (récurrent), tâches, rendez-vous des 7 prochains jours, repas du jour, raccourcis.
 - **Repas & courses** : recettes, menu de la semaine (midi/soir), liste de courses calculée selon le nombre de personnes.
 
 ## Lancer

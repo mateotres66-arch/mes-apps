@@ -24,6 +24,8 @@
       if (d.current) morceaux.push(`Il fait actuellement ${Math.round(d.current.temperature_2m)} degrés.`);
     }
     const e = typeof etat !== 'undefined' ? etat : { rdv: [], taches: [] }; // défini par matin.js
+    const boulot = window.commun.creneauDuJour(e.planning, auj);
+    morceaux.push(boulot ? `Tu travailles aujourd’hui de ${heureParlee(boulot.debut)} à ${heureParlee(boulot.fin)}.` : `Aujourd’hui, tu ne travailles pas.`);
     const rdv = (e.rdv || []).filter((r) => r.date === auj).sort((a, b) => (a.heure || '').localeCompare(b.heure || ''));
     morceaux.push(rdv.length
       ? `Aujourd’hui, tu as : ${rdv.map((r) => (r.heure ? r.texte + ' à ' + heureParlee(r.heure) : r.texte)).join(', puis ')}.`

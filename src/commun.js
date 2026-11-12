@@ -124,10 +124,17 @@
     return false;
   }
 
+  // Planning de travail récurrent : { "1": {debut:"09:00", fin:"17:00"}, ... } (1 = lundi). Créneau du jour ou null.
+  const creneauDuJour = (planning, iso) => {
+    const [a, m, j] = iso.split('-').map(Number);
+    return planning?.[indexJour(new Date(a, m - 1, j)) + 1] || null;
+  };
+  const heureCourte = (h) => h ? h.replace(/^0/, '').replace(':00', 'h').replace(':', 'h') : '';
+
   const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
   const echapper = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-  const commun = { JOURS, JOURS_LONGS, lundi, isoJour, decaler, indexJour, lireIngredient, listeCourses, formatQte, correspond, proposerRepas, recurrenteDue, stockage, uid, echapper };
+  const commun = { JOURS, JOURS_LONGS, lundi, isoJour, decaler, indexJour, lireIngredient, listeCourses, formatQte, correspond, proposerRepas, recurrenteDue, creneauDuJour, heureCourte, stockage, uid, echapper };
   if (typeof module !== 'undefined') module.exports = commun;
   else racine.commun = commun;
 })(typeof window !== 'undefined' ? window : globalThis);

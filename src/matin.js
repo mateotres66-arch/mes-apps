@@ -11,7 +11,7 @@ const LIENS_DEFAUT = [
   { nom: 'Claude', cible: 'https://claude.ai' },
 ];
 
-let etat = { taches: [], rdv: [], recurrentes: [], liens: LIENS_DEFAUT };
+let etat = { taches: [], rdv: [], recurrentes: [], liens: LIENS_DEFAUT, planning: {} };
 let jourAffiche = '';
 
 const enregistrer = () => stockage.ecrire('matin', etat);
@@ -262,6 +262,40 @@ async function afficherRepas() {
   $('repas-jour').innerHTML = lignes + '<p class="petit" style="margin:12px 0 0">Prévois la semaine dans l’app « Repas &amp; courses ».</p>';
 }
 
+// ---------- Planning de travail (récurrent, chaque semaine) ----------
+const { creneauDuJour, heureCourte } = window.commun;
+const plage = (c) => `${heureCourte(c.debut)} – ${heureCourte(c.fin)}`;
+function afficherPlanning() {
+  const auj = isoJour(new Date());
+  const debutSem = lundi(new Date());
+  $('semaine').innerHTML = NOMS_JOURS.map((nom, i) => {
+    const iso = window.commun.decaler(debutSem, i);
+    const c = creneauDuJour(etat.planning, iso);
+    const date = new Date(iso + 'T12:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+    return `<div class="js ${c ? '' : 'repos'} ${iso === auj ? 'auj' : ''}"><b>${nom[0].toUpperCase() + nom.slice(1)} ${date}</b><strong>${c ? plage(c) : 'Repos'}</strong></div>`;
+  }).join('');
+  const c = creneauDuJour(etat.planning, auj);
+  $('planning-auj').textContent = c ? `Aujourd'hui : boulot ${plage(c)}` : "Aujourd'hui : repos";
+  // ne pas redessiner les réglages pendant qu'on tape une heure dedans
+  if ($('reglage-jours').contains(document.activeElement)) return;
+  $('reglage-jours').innerHTML = NOMS_JOURS.map((nom, i) => {
+    const p = etat.planning?.[i + 1];
+    return `<div data-j="${i + 1}"><label><input type="checkbox" ${p ? 'checked' : ''}> <span style="text-transform:capitalize">${nom}</span></label>
+      <input type="time" class="debut" value="${p?.debut || '09:00'}" aria-label="Début ${nom}" ${p ? '' : 'disabled'}>
+      <input type="time" class="fin" value="${p?.fin || '17:00'}" aria-label="Fin ${nom}" ${p ? '' : 'disabled'}></div>`;
+  }).join('');
+}
+$('reglage-jours').addEventListener('change', (e) => {
+  const ligne = e.target.closest('[data-j]');
+  if (!ligne) return;
+  const [coche, debut, fin] = ligne.querySelectorAll('input');
+  debut.disabled = fin.disabled = !coche.checked;
+  etat.planning ||= {};
+  if (coche.checked) etat.planning[ligne.dataset.j] = { debut: debut.value || '09:00', fin: fin.value || '17:00' };
+  else delete etat.planning[ligne.dataset.j];
+  enregistrer(); afficherPlanning();
+});
+
 // ---------- Raccourcis ----------
 function afficherLiens() {
   // sur téléphone, seuls les liens web marchent (pas les programmes du PC)
@@ -287,7 +321,7 @@ $('form-lien').addEventListener('submit', (e) => {
   enregistrer(); afficherLiens();
 });
 
-function toutAfficher() { afficherTaches(); afficherRdv(); afficherRepas(); afficherLiens(); }
+function toutAfficher() { afficherTaches(); afficherRdv(); afficherRepas(); afficherLiens(); afficherPlanning(); }
 
 $('maj-meteo').addEventListener('click', meteo);
 // synchro : changement venu du téléphone ou de l'autre app

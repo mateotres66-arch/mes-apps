@@ -36,6 +36,15 @@ assert.ok(c.recurrenteDue('mois:31', '2026-11-30')); // dernier jour d'un mois d
 assert.ok(!c.recurrenteDue('mois:31', '2026-11-29'));
 assert.ok(c.recurrenteDue('mois:31', '2027-02-28'));
 
+// Planning de travail
+const plan = { 1: { debut: '09:00', fin: '17:30' }, 3: { debut: '14:00', fin: '22:00' } };
+assert.deepStrictEqual(c.creneauDuJour(plan, '2026-11-09'), plan[1]); // lundi
+assert.strictEqual(c.creneauDuJour(plan, '2026-11-10'), null); // mardi : repos
+assert.deepStrictEqual(c.creneauDuJour(plan, '2026-11-18'), plan[3]); // mercredi, semaine suivante
+assert.strictEqual(c.creneauDuJour(undefined, '2026-11-09'), null);
+assert.strictEqual(c.heureCourte('09:00'), '9h');
+assert.strictEqual(c.heureCourte('17:30'), '17h30');
+
 // Idées repas
 const { BIBLIOTHEQUE, PLACARD } = require('./src/bibliotheque.js');
 const lib = BIBLIOTHEQUE.map(([nom, portions, ingredients]) => ({ nom, portions, ingredients }));
